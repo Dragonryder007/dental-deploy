@@ -83,13 +83,13 @@ const Chatbot = () => {
           <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-4 text-white border-b border-white/10">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center">
                 <svg viewBox="0 0 24 24" className="w-6 h-6 text-cyan-200" fill="currentColor" aria-hidden="true">
                   <path d="M12 2a1 1 0 0 1 1 1v1.06A7.002 7.002 0 0 1 19 11v5a4 4 0 0 1-4 4h-1v1a1 1 0 1 1-2 0v-1h-2v1a1 1 0 1 1-2 0v-1H7a4 4 0 0 1-4-4v-5a7.002 7.002 0 0 1 6-6.94V3a1 1 0 0 1 1-1h2ZM5 11v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5a5 5 0 0 0-5-5h-2a5 5 0 0 0-5 5Zm4 1a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 9 12Zm6 0a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 15 12Z" />
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-lg tracking-wide">Auro V Dental Assistant</h3>
+                <h3 className="font-bold text-lg tracking-wide">V Dental and Implant Center Assistant</h3>
                 <p className="text-xs text-white/70">Quick answers • booking • pricing • FAQs</p>
               </div>
               </div>

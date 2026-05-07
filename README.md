@@ -1,4 +1,4 @@
-# 🦷 Auro V Dental - Premium Dental Website
+# 🦷 V Dental and Implant Center - Premium Dental Website
 
 A modern, fully-featured dental website built with **React**, **Node.js**, and **Tailwind CSS**. Features AI-powered smile preview, appointment booking, treatment recommendations, and more.
 
@@ -182,7 +182,7 @@ See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for:
 
 ## 📝 License
 
-This project is proprietary software for Auro V Dental.
+This project is proprietary software for V Dental and Implant Center.
 
 ## 👥 Contributors
 
@@ -192,6 +192,6 @@ This project is proprietary software for Auro V Dental.
 
 ---
 
-**Built with ❤️ for Auro V Dental**
+**Built with ❤️ for V Dental and Implant Center**
 
 *Ready for production deployment!* ✅

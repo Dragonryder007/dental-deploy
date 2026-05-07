@@ -41,7 +41,7 @@ const AssessmentPage = () => {
       await axios.post('https://api.web3forms.com/submit', {
         access_key: '8f11e73a-2e5f-4578-bb73-52c99d93155f',
         subject: `New Smile Assessment Completed`,
-        from_name: 'Auro V Dental Website',
+        from_name: 'V Dental and Implant Center Website',
         confirm_email: 'true',
         replyto: 'cursorhalesh@gmail.com',
         name: 'Patient Assessment User',
@@ -65,7 +65,7 @@ const AssessmentPage = () => {
       <SEO 
         title="Free Smile Assessment" 
         description="Take our 1-minute smile assessment quiz to get a personalized dental treatment recommendation and cost estimate. Free for all patients."
-        keywords="smile quiz, dental assessment, free dental advice, smile makeover quiz, Auro V Dental"
+        keywords="smile quiz, dental assessment, free dental advice, smile makeover quiz, V Dental and Implant Center"
       />
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 import Chatbot from './components/Chatbot';
@@ -17,6 +18,7 @@ import FAQPage from './pages/FAQ';
 import ImageUpload from './components/ImageUpload';
 import { Login, Register } from './pages/Placeholders';
 import Admin from './pages/Admin';
+import Reviews from './pages/Reviews';
 
 function AppLayout() {
   const location = useLocation();
@@ -34,6 +36,7 @@ function AppLayout() {
         <Route path="/assessment" element={<AssessmentPage />} />
         <Route path="/results" element={<ResultsPage />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/reviews" element={<Reviews />} />
         <Route path="/ai-preview" element={<ImageUpload />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/login" element={<Login />} />
@@ -42,6 +45,7 @@ function AppLayout() {
       </Routes>
       {!isAdmin && <FloatingWhatsApp />}
       {!isAdmin && <Chatbot />}
+      {!isAdmin && <Footer />}
     </>
   );
 }

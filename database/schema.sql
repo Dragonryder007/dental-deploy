@@ -1,4 +1,4 @@
--- Auro V Dental - MySQL Schema Reference
+-- V Dental and Implant Center - MySQL Schema Reference
 
 CREATE DATABASE IF NOT EXISTS `smilevista`;
 USE `smilevista`;

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://aurovdental.com/sitemap.xml
+Sitemap: https://vdentalandimplantcenter.com/sitemap.xml

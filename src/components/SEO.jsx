@@ -6,7 +6,7 @@ const SEO = ({ title, description, keywords }) => {
 
   useEffect(() => {
     // Update Title
-    const baseTitle = 'Auro V Dental';
+    const baseTitle = 'V Dental and Implant Center';
     document.title = title ? `${title} — ${baseTitle}` : `${baseTitle} — World-Class Dentistry`;
 
     // Update Meta Description
@@ -16,7 +16,7 @@ const SEO = ({ title, description, keywords }) => {
       metaDescription.name = 'description';
       document.head.appendChild(metaDescription);
     }
-    metaDescription.setAttribute('content', description || 'Auro V Dental offers world-class dentistry including Digital Smile Designing, Aligners, Braces, and Dental Implants.');
+    metaDescription.setAttribute('content', description || 'V Dental and Implant Center offers world-class dentistry including Digital Smile Designing, Aligners, Braces, and Dental Implants.');
 
     // Update Keywords
     let metaKeywords = document.querySelector('meta[name="keywords"]');

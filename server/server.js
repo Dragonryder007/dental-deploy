@@ -75,7 +75,7 @@ async function getTestMailer() {
       secure: testAccount.smtp.secure,
       auth: { user: testAccount.user, pass: testAccount.pass }
     });
-    return { transporter, from: `Auro V Dental <${testAccount.user}>`, testAccount };
+    return { transporter, from: `V Dental and Implant Center <${testAccount.user}>`, testAccount };
   })();
   return cachedTestMailerPromise;
 }
@@ -107,7 +107,7 @@ async function sendAppointmentConfirmationEmail({ to, appointment, confirmationN
     `Service: ${appointment.service || '-'}`,
     `Issue: ${appointment.issue || '-'}`,
     '',
-    '— Auro V Dental'
+    '— V Dental and Implant Center'
   ].join('\n');
 
   const html = `
@@ -123,7 +123,7 @@ async function sendAppointmentConfirmationEmail({ to, appointment, confirmationN
         <tr><td><strong>Service</strong></td><td>${appointment.service || '-'}</td></tr>
         <tr><td><strong>Issue</strong></td><td>${appointment.issue || '-'}</td></tr>
       </table>
-      <p>— Auro V Dental</p>
+      <p>— V Dental and Implant Center</p>
     </div>
   `;
 
@@ -162,7 +162,7 @@ async function sendReminderEmail({ to, appointment }) {
       <p><strong>Date:</strong> ${appointment.date}<br>
       <strong>Time:</strong> ${appointment.time}</p>
       <p>We look forward to seeing you!</p>
-      <p>— Auro V Dental</p>
+      <p>— V Dental and Implant Center</p>
     </div>
   `;
 
@@ -195,7 +195,6 @@ initDb().catch(err => {
 // Gallery schema is handled in initial creation for MySQL
 
 // In-memory storage (non-persistent)
-let appointments = [];
 let assessments = [];
 let chatHistory = [];
 
@@ -322,8 +321,23 @@ app.post('/api/appointments', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing required fields' });
   }
 
+  const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  let appointmentId;
+  try {
+    const result = await dbRun(
+      `INSERT INTO appointments (name, phone, email, date, time, service, issue, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, phone, email || null, date, time, service || null, issue || null, 'pending', createdAt]
+    );
+    appointmentId = result.lastID;
+  } catch (error) {
+    console.error('❌ Appointment insert error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to save appointment' });
+  }
+
   const appointment = {
-    id: appointments.length + 1,
+    id: appointmentId,
     name,
     phone,
     email,
@@ -335,7 +349,6 @@ app.post('/api/appointments', async (req, res) => {
     createdAt: new Date()
   };
 
-  appointments.push(appointment);
   const confirmationNumber = `APT-${Date.now()}`;
 
   // Store as a lead (persistent)
@@ -352,7 +365,7 @@ app.post('/api/appointments', async (req, res) => {
         service || null,
         issue || null,
         'new',
-        new Date()
+        new Date().toISOString().slice(0, 19).replace('T', ' ')
       ]
     );
     leadStatus = { saved: true, leadId: result.lastID };
@@ -378,8 +391,14 @@ app.post('/api/appointments', async (req, res) => {
   });
 });
 
-app.get('/api/appointments', (req, res) => {
-  res.json({ success: true, appointments });
+app.get('/api/appointments', async (req, res) => {
+  try {
+    const appointments = await dbAll(`SELECT * FROM appointments ORDER BY createdAt DESC`);
+    res.json({ success: true, appointments });
+  } catch (error) {
+    console.error('Appointments fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch appointments' });
+  }
 });
 
 app.get('/api/available-slots', (req, res) => {
@@ -410,6 +429,32 @@ app.get('/api/gallery', (req, res) => {
 // ============================================
 // ADMIN: LEADS API
 // ============================================
+app.post('/api/leads', async (req, res) => {
+  const { name, phone, email, service, source, message } = req.body;
+  
+  if (!name || !phone) {
+    return res.status(400).json({ success: false, error: 'Name and phone are required' });
+  }
+
+  try {
+    const query = `
+      INSERT INTO leads (name, phone, email, service, source, message, createdAt) 
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `;
+    // Note: since this is MySQL, we should use NOW() instead of datetime('now')
+    const mysqlQuery = `
+      INSERT INTO leads (name, phone, email, service, source, message, createdAt) 
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+    `;
+    await dbRun(mysqlQuery, [name, phone, email || null, service || null, source || 'Website', message || null]);
+    
+    res.json({ success: true, message: 'Lead captured successfully!' });
+  } catch (error) {
+    console.error('Lead submission error:', error);
+    res.status(500).json({ success: false, error: 'Failed to capture lead' });
+  }
+});
+
 app.get('/api/leads', requireAdmin, (req, res) => {
   dbAll(`SELECT * FROM leads ORDER BY createdAt DESC`)
     .then((rows) => res.json({ success: true, leads: rows }))
@@ -448,7 +493,7 @@ app.post(
     }
 
     const imageUrl = `/uploads/${imageFile.filename}`;
-    const createdAt = new Date();
+    const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     dbRun(
       `INSERT INTO gallery (category, title, imageUrl, createdAt) VALUES (?, ?, ?, ?)`,
@@ -487,10 +532,84 @@ app.delete('/api/admin/gallery/:id', requireAdmin, async (req, res) => {
 });
 
 // ============================================
+// REVIEWS API
+// ============================================
+
+app.post('/api/reviews', async (req, res) => {
+  const { name, email, phone, rating, comment } = req.body;
+  if (!email || !phone || !rating) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  try {
+    await dbRun(
+      `INSERT INTO reviews (name, email, phone, rating, comment, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+      [name || null, email, phone, rating, comment || null, createdAt]
+    );
+    res.json({ success: true, message: 'Review submitted successfully' });
+  } catch (error) {
+    console.error('Review insert error:', error);
+    res.status(500).json({ success: false, error: 'Failed to save review' });
+  }
+});
+
+app.get('/api/reviews', async (req, res) => {
+  try {
+    // Only fetch published reviews for public view
+    const reviews = await dbAll(`SELECT name, rating, comment, createdAt FROM reviews WHERE status = 'published' ORDER BY createdAt DESC`);
+    res.json({ success: true, reviews });
+  } catch (error) {
+    console.error('Reviews fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch reviews' });
+  }
+});
+
+// Admin Review Routes
+app.get('/api/admin/reviews', requireAdmin, async (req, res) => {
+  try {
+    const reviews = await dbAll(`SELECT * FROM reviews ORDER BY createdAt DESC`);
+    res.json({ success: true, reviews });
+  } catch (error) {
+    console.error('Admin reviews fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch reviews' });
+  }
+});
+
+app.patch('/api/admin/reviews/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!status || !['pending', 'published', 'rejected'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid status' });
+  }
+
+  try {
+    await dbRun(`UPDATE reviews SET status = ? WHERE id = ?`, [status, id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Review update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update review' });
+  }
+});
+
+app.delete('/api/admin/reviews/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await dbRun(`DELETE FROM reviews WHERE id = ?`, [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Review delete error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete review' });
+  }
+});
+
+// ============================================
 // STEP 8: CHATBOT API
 // ============================================
 const CLINIC = {
-  brand: 'Auro V Dental',
+  brand: 'SmileVista Dental',
   whatsappNumber: '919731065325',
   email: 'hello@smilevista.com',
   bookingPath: '/booking',
@@ -771,12 +890,15 @@ cron.schedule('0 9 * * *', async () => {
   console.log('📧 Running appointment reminder job...');
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-  // Filter appointments for tomorrow
-  const reminders = appointments.filter(apt => apt.date === tomorrow && apt.email);
-  console.log(`💬 Sending ${reminders.length} reminders for tomorrow (${tomorrow})...`);
+  try {
+    const reminders = await dbAll(`SELECT * FROM appointments WHERE date = ? AND email IS NOT NULL AND email != ''`, [tomorrow]);
+    console.log(`💬 Sending ${reminders.length} reminders for tomorrow (${tomorrow})...`);
 
-  for (const apt of reminders) {
-    await sendReminderEmail({ to: apt.email, appointment: apt });
+    for (const apt of reminders) {
+      await sendReminderEmail({ to: apt.email, appointment: apt });
+    }
+  } catch (err) {
+    console.error('❌ Reminder job error:', err);
   }
 });
 
@@ -788,7 +910,7 @@ app.use(express.static(distPath));
 
 // API health check
 app.get('/api/health', (req, res) => {
-  res.json({ message: 'Auro V Dental API is running', version: '1.0.0' });
+  res.json({ message: 'SmileVista Dental API is running', version: '1.0.0' });
 });
 
 // DB diagnostic endpoint - safe to remove after deployment is verified
@@ -832,5 +954,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log('✅ All APIs ready for Auro V Dental');
+  console.log('✅ All APIs ready for V Dental and Implant Center');
 });

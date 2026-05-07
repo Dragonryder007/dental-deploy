@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import SEO from '../components/SEO';
 import Navbar from '../components/Navbar';
+import Doctors from '../components/Doctors';
 import axios from 'axios';
 import smileImg from '../images/smile design after.png';
 import alignersImg from '../images/braces and aligners after.png';
@@ -28,23 +29,70 @@ const Home = () => {
   });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [dynamicReviews, setDynamicReviews] = useState([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupData, setPopupData] = useState({ name: '', phone: '' });
+  const [popupSubmitted, setPopupSubmitted] = useState(false);
+  const [popupLoading, setPopupLoading] = useState(false);
 
   const location = useLocation();
 
-  useEffect(() => {
-    const fetchOurWork = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/gallery`);
-        if (res.data?.success) {
-          const filtered = res.data.gallery.filter(item => item.category === 'our-work');
-          setOurWorkGallery(filtered);
-        }
-      } catch (err) {
-        console.error('Error fetching our work gallery:', err);
+  const fetchOurWorkGallery = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/gallery`);
+      if (res.data?.success) {
+        const filtered = res.data.gallery.filter(item => item.category === 'our-work');
+        setOurWorkGallery(filtered);
       }
-    };
-    fetchOurWork();
+    } catch (err) {
+      console.error('Error fetching our work gallery:', err);
+    }
+  };
+
+  const fetchDynamicReviews = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/reviews`);
+      if (res.data?.success) {
+        setDynamicReviews(res.data.reviews || []);
+      }
+    } catch (e) {
+      console.error('Failed to load reviews', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchOurWorkGallery();
+    fetchDynamicReviews();
+
+    // Show popup after 5 seconds if not already shown this session
+    const hasShownPopup = sessionStorage.getItem('hasShownLeadPopup');
+    if (!hasShownPopup) {
+      const timer = setTimeout(() => {
+        setShowPopup(true);
+        sessionStorage.setItem('hasShownLeadPopup', 'true');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
   }, []);
+
+  const handlePopupSubmit = async (e) => {
+    e.preventDefault();
+    if (!popupData.name || !popupData.phone) return;
+    setPopupLoading(true);
+    try {
+      await axios.post(`${API_BASE}/api/leads`, {
+        name: popupData.name,
+        phone: popupData.phone,
+        source: 'Visitor Popup'
+      });
+      setPopupSubmitted(true);
+      setTimeout(() => setShowPopup(false), 3000);
+    } catch (err) {
+      console.error('Failed to submit visitor lead', err);
+    } finally {
+      setPopupLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (location.hash) {
@@ -70,7 +118,7 @@ const Home = () => {
       await axios.post('https://api.web3forms.com/submit', {
         access_key: '8f11e73a-2e5f-4578-bb73-52c99d93155f',
         subject: `Contact Inquiry: ${contactData.firstName} ${contactData.lastName}`,
-        from_name: 'Auro V Dental Website',
+        from_name: 'V Dental and Implant Center Website',
         confirm_email: 'true',
         replyto: 'cursorhalesh@gmail.com',
         name: `${contactData.firstName} ${contactData.lastName}`, 
@@ -82,6 +130,20 @@ const Home = () => {
           'Accept': 'application/json'
         }
       });
+      
+      // Also save to our own leads database
+      try {
+        await axios.post(`${API_BASE}/api/leads`, {
+          name: `${contactData.firstName} ${contactData.lastName}`.trim(),
+          phone: contactData.phone || 'Not Provided',
+          email: contactData.email,
+          message: contactData.message,
+          source: 'Contact Form'
+        });
+      } catch (err) {
+        console.error('Failed to save lead to local database', err);
+      }
+
       setSubmitted(true);
     } catch (error) {
       console.error('Contact error:', error);
@@ -116,8 +178,8 @@ const Home = () => {
     <div className="pt-20">
       <SEO 
         title="World-Class Dentistry in Bengaluru"
-        description="Auro V Dental offers advanced digital smile designing, clear aligners, and dental implants with international standards. Book your free consultation today."
-        keywords="best dentist Bengaluru, digital smile design, clear aligners India, dental implants Bengaluru, Auro V Dental"
+        description="V Dental and Implant Center offers advanced digital smile designing, clear aligners, and dental implants with international standards. Book your free consultation today."
+        keywords="best dentist Bengaluru, digital smile design, clear aligners India, dental implants Bengaluru, V Dental and Implant Center"
       />
       {/* Hero Section */}
       <header className="relative min-h-[90vh] flex items-center px-6 md:px-20 overflow-hidden bg-[color:var(--deep)]">
@@ -331,7 +393,7 @@ const Home = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-black/5 shadow-sm text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-6">
-              <span className="w-3 h-3 rounded-full bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.4)]" />
+              <span className="w-3 h-3 rounded-full bg-[color:var(--teal)] shadow-[0_0_8px_rgba(0,102,102,0.4)]" />
               {t('nav.ourWork')}
             </div>
             <h2 className="text-5xl md:text-6xl font-serif font-bold text-[color:var(--dk)] mb-6">
@@ -421,6 +483,9 @@ const Home = () => {
           ))}
         </div>
       </section>
+
+      {/* New Doctors Team Section */}
+      <Doctors />
 
       {/* Dental Tourism */}
       <section className="py-24 px-6 bg-[color:var(--soft)]">
@@ -517,30 +582,40 @@ const Home = () => {
 
         <div className="max-w-7xl mx-auto mt-14 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
           {[
-            {
+            ...dynamicReviews.map(r => ({
+              q: r.comment,
+              n: r.name || 'Anonymous',
+              l: new Date(r.createdAt).toLocaleDateString(),
               feat: true,
+              rating: r.rating
+            })),
+            {
+              feat: false,
               q: t('home.testimonials.t1'),
               n: 'Sara Al‑Hamdan',
               l: 'Dubai, UAE'
             },
             {
+              feat: false,
               q: t('home.testimonials.t2'),
               n: 'James Mitchell',
               l: 'Manchester, UK'
             },
             {
+              feat: false,
               q: t('home.testimonials.t3'),
               n: 'Anna Petrova',
               l: 'Moscow, Russia'
             },
             {
+              feat: false,
               q: 'Got my implants done — feels just like natural teeth.\nProfessional care and smooth experience from start to finish.\nCompletely changed my confidence and quality of life.',
-              n: 'Auro V Dental Patient',
+              n: 'V Dental and Implant Center Patient',
               l: 'Bengaluru, India'
             }
-          ].map((t) => (
+          ].map((t, idx) => (
             <div
-              key={t.n}
+              key={idx}
               className={[
                 'rounded-3xl p-8 border transition',
                 t.feat
@@ -548,7 +623,9 @@ const Home = () => {
                   : 'bg-white border-black/5 text-[color:var(--txt)] hover:shadow-xl hover:shadow-black/5'
               ].join(' ')}
             >
-              <div className={t.feat ? 'text-[#C9A24A]' : 'text-[color:var(--teal)]'}>★★★★★</div>
+              <div className={t.feat ? 'text-[#C9A24A]' : 'text-[color:var(--teal)]'}>
+                {'★'.repeat(t.rating || 5)}{'☆'.repeat(5 - (t.rating || 5))}
+              </div>
               <p className={['mt-4 text-base leading-7 whitespace-pre-wrap', t.feat ? 'text-white/75' : 'text-[color:var(--muted)]'].join(' ')}>
                 {t.q}
               </p>
@@ -581,7 +658,7 @@ const Home = () => {
               <div className="flex gap-4 items-start">
                 <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">📧</div>
                 <div>
-                  <div className="font-bold text-white">hello@aurovdental.com</div>
+                  <div className="font-bold text-white">hello@vdentalandimplantcenter.com</div>
                   <div className="text-sm text-white/55">{t('home.contact.email')}</div>
                 </div>
               </div>
@@ -603,7 +680,7 @@ const Home = () => {
                 <p className="text-[color:var(--muted)] mb-8">{t('home.contact.sentSub')}</p>
                 <div className="flex flex-col gap-4">
                   <a 
-                    href={`https://wa.me/919731065325?text=${encodeURIComponent(
+                    href={`https://wa.me/919037151894?text=${encodeURIComponent(
                       `Hello! I just submitted a contact form on your website. \nName: ${contactData.firstName} ${contactData.lastName} \nEmail: ${contactData.email} \nMessage: ${contactData.message}`
                     )}`}
                     target="_blank"
@@ -689,6 +766,68 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Visitor Lead Popup */}
+      {showPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <button 
+              onClick={() => setShowPopup(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            {!popupSubmitted ? (
+              <>
+                <div className="text-[color:var(--teal)] font-bold tracking-[0.2em] uppercase text-xs mb-3">Limited Time Offer</div>
+                <h3 className="text-2xl font-serif font-bold text-[color:var(--dk)] mb-2">Get a Free Consultation</h3>
+                <p className="text-[color:var(--muted)] mb-6">Leave your details and our experts will call you back shortly to discuss your dental needs.</p>
+                
+                <form onSubmit={handlePopupSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-[color:var(--muted)] mb-2">Full Name</label>
+                    <input 
+                      type="text"
+                      required
+                      value={popupData.name}
+                      onChange={(e) => setPopupData({ ...popupData, name: e.target.value })}
+                      className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]"
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-[color:var(--muted)] mb-2">Phone Number</label>
+                    <input 
+                      type="tel"
+                      required
+                      value={popupData.phone}
+                      onChange={(e) => setPopupData({ ...popupData, phone: e.target.value })}
+                      className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]"
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={popupLoading}
+                    className="w-full bg-[color:var(--teal)] text-white py-4 rounded-xl font-bold hover:bg-[color:var(--dk)] transition-colors disabled:opacity-50"
+                  >
+                    {popupLoading ? 'Submitting...' : 'Call Me Back'}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-[color:var(--dk)] mb-2">Thank You!</h3>
+                <p className="text-[color:var(--muted)]">We have received your request and will contact you shortly.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

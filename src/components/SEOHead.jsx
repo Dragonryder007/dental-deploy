@@ -1,11 +1,11 @@
 import React from 'react';
 
 const SEOHead = ({ 
-  title = 'Auro V Dental - Premium Dental Services',
+  title = 'V Dental and Implant Center - Premium Dental Services',
   description = 'Transform your smile with world-class dental treatments including smile designing, aligners, and implants.',
   keywords = 'dental, smile design, aligners, implants, cosmetic dentistry',
   image = 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1200&q=85',
-  url = 'https://aurovdental.com'
+  url = 'https://vdentalandimplantcenter.com'
 }) => {
   React.useEffect(() => {
     // Update meta tags dynamically
@@ -70,7 +70,7 @@ const SEOHead = ({
     const structuredData = {
       '@context': 'https://schema.org/',
       '@type': 'DentalPractice',
-      'name': 'Auro V Dental',
+      'name': 'V Dental and Implant Center',
       'image': image,
       'description': description,
       'url': url,

@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import implantsBefore from '../images/dental implant before.png';
 import implantsAfter from '../images/dental implant after.png';
 import implantsBg from '../images/dental implant background.jpg';
+import DentalImplantsFAQ from '../components/DentalImplantsFAQ';
 
 import SEO from '../components/SEO';
 
@@ -38,9 +39,10 @@ const DentalImplants = () => {
       <SEO 
         title="Dental Implants" 
         description="Replace missing teeth with permanent, bio-compatible dental implants. High-precision placement for a natural look and lifelong function."
-        keywords="dental implants Bengaluru, titanium implants, tooth replacement, implantology, Auro V Dental"
+        keywords="dental implants Bengaluru, titanium implants, tooth replacement, implantology, V Dental and Implant Center"
       />
       <ServicePage {...data} />
+      <DentalImplantsFAQ />
     </>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
+import logo from '../images/logo.png';
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
@@ -29,19 +30,17 @@ const Navbar = () => {
     { name: t('nav.aboutUs'), path: '/#about' },
     { name: t('nav.ourWork'), path: '/#our-work' },
     { name: t('nav.aiPreview'), path: '/ai-preview' },
-    { name: t('nav.results'), path: '/results' },
+    { name: t('nav.reviews'), path: '/reviews' },
     { name: t('nav.assessment'), path: '/assessment' },
     { name: t('nav.faq'), path: '/faq' },
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-black/5 px-4 md:px-6 py-4">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-black/5 p-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-[color:var(--teal)] rounded-xl flex items-center justify-center text-white">
-            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C7.5 2 4 5.5 4 10c0 2.5 1.1 4.7 2.9 6.2L8 21h8l1.1-4.8C18.9 14.7 20 12.5 20 10c0-4.5-3.5-8-8-8zm0 12c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" /></svg>
-          </div>
-          <span className="font-serif text-xl md:text-2xl font-bold text-[color:var(--dk)]">Auro V Dental</span>
+        <Link to="/" className="flex items-center gap-3 no-underline shrink-0">
+          <img src={logo} alt="V Dental Logo" className="h-10 md:h-12 w-auto object-contain"/>
+          <span className="font-serif text-md sm:text-sm font-bold text-[color:var(--dk)] leading-tight text-left">V Dental and <br/> Implant Center</span>
         </Link>
 
         {/* Desktop Links */}

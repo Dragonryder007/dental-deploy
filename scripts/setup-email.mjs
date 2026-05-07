@@ -32,7 +32,7 @@ async function main() {
 
   const smtpUser = (await ask('Gmail address (SMTP_USER): ')).trim();
   const smtpPass = (await ask('Gmail App Password (SMTP_PASS): ')).trim();
-  const fromName = (await ask('From name (default: Auro V Dental): ')).trim() || 'Auro V Dental';
+  const fromName = (await ask('From name (default: V Dental and Implant Center): ')).trim() || 'V Dental and Implant Center';
 
   if (!smtpUser || !smtpPass) {
     console.log('\nMissing SMTP_USER or SMTP_PASS. Aborting.\n');

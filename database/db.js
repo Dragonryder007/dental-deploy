@@ -1,5 +1,12 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const MOCK_DB_DIR = path.join(__dirname, 'mock_db');
 
 dotenv.config();
 
@@ -12,6 +19,30 @@ const dbConfig = {
 };
 
 let pool;
+let useMockJson = false;
+
+function getTableFromSql(sql) {
+  const s = sql.toLowerCase();
+  if (s.includes('leads')) return 'leads';
+  if (s.includes('gallery')) return 'gallery';
+  if (s.includes('appointments')) return 'appointments';
+  if (s.includes('reviews')) return 'reviews';
+  return 'unknown';
+}
+
+function readMockJson(table) {
+  if (!fs.existsSync(MOCK_DB_DIR)) fs.mkdirSync(MOCK_DB_DIR, { recursive: true });
+  const filePath = path.join(MOCK_DB_DIR, `${table}.json`);
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (e) { return []; }
+}
+
+function writeMockJson(table, data) {
+  const filePath = path.join(MOCK_DB_DIR, `${table}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
 
 export async function initDb() {
   try {
@@ -69,25 +100,93 @@ export async function initDb() {
     console.log('✅ Database Tables Verified');
     return pool;
   } catch (err) {
-    console.error('❌ Database Initialization Error:', err);
+    // Bypass MySQL errors for local development
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR') {
+      console.warn(`⚠️ MySQL connection failed to ${dbConfig.host}. Bypassing with JSON mock database for local development.`);
+      useMockJson = true;
+      return null;
+    }
     throw err;
   }
 }
 
 export const dbRun = async (sql, params = []) => {
-  if (!pool) throw new Error('Database pool not initialized. Call initDb() first.');
+  if (useMockJson) {
+    const table = getTableFromSql(sql);
+    const data = readMockJson(table);
+    const sqlUpper = sql.trim().toUpperCase();
+
+    if (sqlUpper.startsWith('INSERT')) {
+      const newId = data.length > 0 ? Math.max(...data.map(i => i.id || 0)) + 1 : 1;
+      const newItem = { id: newId, createdAt: new Date().toISOString() };
+      
+      // Map common table parameters for the app
+      if (table === 'leads') [newItem.name, newItem.phone, newItem.email, newItem.source, newItem.service, newItem.message, newItem.status] = params;
+      else if (table === 'appointments') [newItem.name, newItem.phone, newItem.email, newItem.date, newItem.time, newItem.service, newItem.issue, newItem.status] = params;
+      else if (table === 'gallery') [newItem.category, newItem.title, newItem.imageUrl] = params;
+      else if (table === 'reviews') [newItem.name, newItem.email, newItem.phone, newItem.rating, newItem.comment, newItem.status] = params;
+      
+      data.push(newItem);
+      writeMockJson(table, data);
+      return { lastID: newId, changes: 1 };
+    }
+
+    if (sqlUpper.startsWith('UPDATE')) {
+      const id = params[params.length - 1];
+      const idx = data.findIndex(i => i.id == id);
+      if (idx !== -1) {
+        data[idx].status = params[0]; // Most updates in this app are for 'status'
+        writeMockJson(table, data);
+        return { changes: 1 };
+      }
+    }
+
+    if (sqlUpper.startsWith('DELETE')) {
+      const id = params[0];
+      const filtered = data.filter(i => i.id != id);
+      writeMockJson(table, filtered);
+      return { changes: 1 };
+    }
+    return { lastID: 0, changes: 0 };
+  }
+
+  if (!pool) throw new Error('Database pool not initialized.');
   const [result] = await pool.execute(sql, params);
   return { lastID: result.insertId, changes: result.affectedRows };
 };
 
 export const dbAll = async (sql, params = []) => {
-  if (!pool) throw new Error('Database pool not initialized. Call initDb() first.');
+  if (useMockJson) {
+    const table = getTableFromSql(sql);
+    let data = readMockJson(table);
+    const sqlLower = sql.toLowerCase();
+
+    // Basic mock filtering for Reviews and Reminders
+    if (sqlLower.includes("status = 'published'")) data = data.filter(i => i.status === 'published');
+    if (sqlLower.includes("date = ?")) data = data.filter(i => i.date === params[0]);
+    
+    // Basic sorting by ID/Date
+    if (sqlLower.includes('order by')) {
+      data.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+    
+    return data;
+  }
+
+  if (!pool) throw new Error('Database pool not initialized.');
   const [rows] = await pool.execute(sql, params);
   return rows;
 };
 
 export const dbGet = async (sql, params = []) => {
-  if (!pool) throw new Error('Database pool not initialized. Call initDb() first.');
+  if (useMockJson) {
+    const table = getTableFromSql(sql);
+    const data = readMockJson(table);
+    const id = params[0];
+    return data.find(i => i.id == id) || null;
+  }
+
+  if (!pool) throw new Error('Database pool not initialized.');
   const [rows] = await pool.execute(sql, params);
   return rows[0] || null;
 };

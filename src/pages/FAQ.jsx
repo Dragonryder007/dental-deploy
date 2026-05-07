@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import SEO from '../components/SEO';
+import DentalImplantsFAQ from '../components/DentalImplantsFAQ';
 
 const FAQPage = () => {
   const { t } = useLanguage();
@@ -53,7 +54,7 @@ const FAQPage = () => {
       <SEO 
         title="Frequently Asked Questions" 
         description="Find answers to common dental questions about implants, aligners, and smile makeovers. Get all the information you need before your visit."
-        keywords="dental FAQ, dentist questions, aligner costs, implant safety, Auro V Dental help"
+        keywords="dental FAQ, dentist questions, aligner costs, implant safety, V Dental and Implant Center help"
       />
       <div className="max-w-4xl mx-auto">
         {/* Header */}
@@ -118,6 +119,11 @@ const FAQPage = () => {
             ))}
           </div>
         )}
+
+        {/* Detailed Dental Implants FAQ Section */}
+        <div className="mt-16 bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+          <DentalImplantsFAQ />
+        </div>
 
         {/* Still have questions? */}
         <div className="mt-16 bg-gradient-to-r from-[color:var(--teal)] to-[color:var(--dk)] rounded-3xl p-12 text-center text-white">

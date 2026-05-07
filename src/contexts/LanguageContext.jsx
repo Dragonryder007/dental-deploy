@@ -12,6 +12,7 @@ const translations = {
       results: 'Results',
       assessment: 'Assessment',
       faq: 'FAQ',
+      reviews: 'Reviews',
       contact: 'Contact',
       signIn: 'Sign In',
       register: 'Register',
@@ -47,9 +48,9 @@ const translations = {
         emergency: 'Same‑Day',
         emergencyD: 'Emergency Care'
       },
-      aboutTitle: 'About Auro V Dental',
+      aboutTitle: 'About V Dental and Implant Center',
       aboutH2: 'More than a clinic — a global smile centre',
-      aboutP: 'Founded by internationally trained specialists, Auro V Dental combines cutting‑edge technology with genuine warmth. We treat local families and international travelers with the same high‑touch care, from consultation to aftercare.',
+      aboutP: 'Founded by internationally trained specialists, V Dental and Implant Center combines cutting‑edge technology with genuine warmth. We treat local families and international travelers with the same high‑touch care, from consultation to aftercare.',
       aboutF1Title: '3D Digital Planning',
       aboutF1Desc: 'Preview your smile with CBCT + digital design workflow.',
       aboutF2Title: 'International Concierge',
@@ -88,7 +89,7 @@ const translations = {
         step1Desc: 'Share X‑rays/photos. Receive a plan and estimate within 24 hours.',
         step2Title: 'Travel & accommodation',
         step2Desc: 'Airport pickup + partner hotels minutes from the clinic.',
-        step3Title: 'Treatment at Auro V Dental',
+        step3Title: 'Treatment at V Dental and Implant Center',
         step3Desc: 'Most multi‑procedure packages completed in 5–10 days.',
         step4Title: 'Lifetime remote aftercare',
         step4Desc: 'Digital records and follow‑ups after you return home.',
@@ -145,7 +146,7 @@ const translations = {
       realResults: 'Real results for real patients. Explore our collection of dental transformations.',
       patientExperiences: 'Patient Experiences',
       patientExpSub: 'Real patient experiences from our dental implant and smile care journeys.',
-      patientExpDesc: 'Hear directly from patients who chose Auro V Dental for confidence, comfort, and long-term smiles.'
+      patientExpDesc: 'Hear directly from patients who chose V Dental and Implant Center for confidence, comfort, and long-term smiles.'
     },
     services: {
       whyChoose: 'Why Choose Our Clinic?',
@@ -385,6 +386,51 @@ const translations = {
       a10: 'Yes, we provide structured plans for outstation and international patients.',
       q11: 'ADDITIONAL SERVICES?',
       a11: 'We also offer clear aligners and braces for patients looking to straighten their teeth.'
+    },
+    reviews: {
+      giveReview: 'Give Review',
+      reviewDesc: 'We value your feedback. Please share your experience with us.',
+      rating: 'Rating',
+      comments: 'Comments',
+      submit: 'Submit Review',
+      submitting: 'Submitting...',
+      success: 'Thank you! Your review has been submitted.',
+      error: 'Failed to submit review. Please try again.',
+      writeCommentPlaceholder: 'Write your experience here...'
+    },
+    footer: {
+      tagline: 'International centre of dental excellence delivering world-class smiles since 2007.',
+      treatments: 'Treatments',
+      international: 'International',
+      clinic: 'Clinic',
+      allRights: '© 2026 V Dental and Implant Center. All rights reserved.',
+      privacy: 'Privacy Policy',
+      terms: 'Terms',
+      accessibility: 'Accessibility',
+      links: {
+        smileMakeover: 'Smile Makeover',
+        dentalImplants: 'Dental Implants',
+        cosmeticDentistry: 'Cosmetic Dentistry',
+        invisibleBraces: 'Invisible Braces',
+        laserDentistry: 'Laser Dentistry',
+        fullMouthRehab: 'Full Mouth Rehab',
+        rootCanal: 'Root Canal',
+        teethWhitening: 'Teeth Whitening',
+        dentalTourism: 'Dental Tourism',
+        travelGuide: 'Travel Guide',
+        hotelPartners: 'Hotel Partners',
+        visaSupport: 'Visa Support',
+        virtualConsult: 'Virtual Consult',
+        costEstimator: 'Cost Estimator',
+        patientStories: 'Patient Stories',
+        aboutUs: 'About V Dental and Implant Center',
+        ourDoctors: 'Our Doctors',
+        technology: 'Technology',
+        gallery: 'Gallery',
+        blog: 'Blog',
+        careers: 'Careers',
+        contactUs: 'Contact Us'
+      }
     }
   },
   es: {
@@ -398,6 +444,7 @@ const translations = {
       results: 'Resultados',
       assessment: 'Evaluación',
       faq: 'Preguntas Frecuentes',
+      reviews: 'Reseñas',
       contact: 'Contacto',
       signIn: 'Iniciar Sesión',
       register: 'Registrarse',
@@ -433,9 +480,9 @@ const translations = {
         emergency: 'Mismo Día',
         emergencyD: 'Atención de Emergencia'
       },
-      aboutTitle: 'Sobre Auro V Dental',
+      aboutTitle: 'Sobre V Dental and Implant Center',
       aboutH2: 'Más que una clínica — un centro global de sonrisas',
-      aboutP: 'Fundada por especialistas capacitados internacionalmente, Auro V Dental combina tecnología de punta con calidez genuina. Tratamos a familias locales y viajeros internacionales con el mismo cuidado de alto nivel, desde la consulta hasta el postratamiento.',
+      aboutP: 'Fundada por especialistas capacitados internacionalmente, V Dental and Implant Center combina tecnología de punta con calidez genuina. Tratamos a familias locales y viajeros internacionales con el mismo cuidado de alto nivel, desde la consulta hasta el postratamiento.',
       aboutF1Title: 'Planificación Digital 3D',
       aboutF1Desc: 'Previsualiza tu sonrisa con el flujo de trabajo de diseño digital y CBCT.',
       aboutF2Title: 'Conserje Internacional',
@@ -474,7 +521,7 @@ const translations = {
         step1Desc: 'Comparte radiografías/fotos. Recibe un plan y presupuesto en 24 horas.',
         step2Title: 'Viaje y alojamiento',
         step2Desc: 'Recogida en el aeropuerto + hoteles asociados a minutos de la clínica.',
-        step3Title: 'Tratamiento en Auro V Dental',
+        step3Title: 'Tratamiento en V Dental and Implant Center',
         step3Desc: 'La mayoría de los paquetes de procedimientos múltiples se completan en 5–10 días.',
         step4Title: 'Postratamiento remoto de por vida',
         step4Desc: 'Registros digitales y seguimientos después de que regreses a casa.',
@@ -531,7 +578,7 @@ const translations = {
       realResults: 'Resultados reales para pacientes reales. Explora nuestra colección de transformaciones dentales.',
       patientExperiences: 'Experiencias de Pacientes',
       patientExpSub: 'Experiencias reales de pacientes en nuestros tratamientos de implantes dentales y cuidado de la sonrisa.',
-      patientExpDesc: 'Escucha directamente a los pacientes que eligieron Auro V Dental para obtener confianza, comodidad y sonrisas a largo plazo.'
+      patientExpDesc: 'Escucha directamente a los pacientes que eligieron V Dental and Implant Center para obtener confianza, comodidad y sonrisas a largo plazo.'
     },
     services: {
       whyChoose: '¿Por Qué Elegir Nuestra Clínica?',
@@ -771,6 +818,51 @@ const translations = {
       a10: 'Sí, ofrecemos planes estructurados para pacientes foráneos e internacionales.',
       q11: '¿SERVICIOS ADICIONALES?',
       a11: 'También ofrecemos alineadores transparentes y frenos para pacientes que buscan enderezar sus dientes.'
+    },
+    reviews: {
+      giveReview: 'Dar Reseña',
+      reviewDesc: 'Valoramos tus comentarios. Por favor comparte tu experiencia con nosotros.',
+      rating: 'Calificación',
+      comments: 'Comentarios',
+      submit: 'Enviar Reseña',
+      submitting: 'Enviando...',
+      success: '¡Gracias! Tu reseña ha sido enviada.',
+      error: 'Error al enviar la reseña. Inténtalo de nuevo.',
+      writeCommentPlaceholder: 'Escribe tu experiencia aquí...'
+    },
+    footer: {
+      tagline: 'Centro internacional de excelencia dental que ofrece sonrisas de clase mundial desde 2007.',
+      treatments: 'Tratamientos',
+      international: 'Internacional',
+      clinic: 'Clínica',
+      allRights: '© 2026 V Dental and Implant Center. Todos los derechos reservados.',
+      privacy: 'Política de Privacidad',
+      terms: 'Términos',
+      accessibility: 'Accesibilidad',
+      links: {
+        smileMakeover: 'Diseño de Sonrisa',
+        dentalImplants: 'Implantes Dentales',
+        cosmeticDentistry: 'Odontología Estética',
+        invisibleBraces: 'Ortodoncia Invisible',
+        laserDentistry: 'Odontología Láser',
+        fullMouthRehab: 'Rehabilitación Oral Completa',
+        rootCanal: 'Endodoncia',
+        teethWhitening: 'Blanqueamiento Dental',
+        dentalTourism: 'Turismo Dental',
+        travelGuide: 'Guía de Viaje',
+        hotelPartners: 'Hoteles Asociados',
+        visaSupport: 'Soporte de Visa',
+        virtualConsult: 'Consulta Virtual',
+        costEstimator: 'Estimador de Costos',
+        patientStories: 'Historias de Pacientes',
+        aboutUs: 'Sobre V Dental and Implant Center',
+        ourDoctors: 'Nuestros Doctores',
+        technology: 'Tecnología',
+        gallery: 'Galería',
+        blog: 'Blog',
+        careers: 'Carreras',
+        contactUs: 'Contáctenos'
+      }
     }
   },
 };

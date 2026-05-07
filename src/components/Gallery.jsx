@@ -79,7 +79,7 @@ const Gallery = ({ onSelectImage }) => {
                 </div>
               </div>
               <div className="p-4 bg-white">
-                <h3 className="font-bold text-teal-900">{item.title}</h3>
+                <h3 className="font-bold text-[color:var(--teal)]">{item.title}</h3>
               </div>
             </div>
           ))}

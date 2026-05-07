@@ -4,11 +4,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const dbConfig = {
-  host: process.env.MYSQL_HOST || 'localhost',
+  host: process.env.MYSQL_HOST || '193.203.184.191',
   port: process.env.MYSQL_PORT ? Number(process.env.MYSQL_PORT) : 3306,
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'root',
-  database: process.env.MYSQL_DATABASE || 'smilevista'
+  user: process.env.MYSQL_USER || 'u817245059_admin',
+  password: process.env.MYSQL_PASSWORD || 'auroVdental1',
+  database: process.env.MYSQL_DATABASE || 'u817245059_aurovdental'
 };
 
 let pool;

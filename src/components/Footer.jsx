@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import logo from '../images/logo.png';
+import { CLINIC_EMAIL, GOOGLE_MAPS_DIRECTIONS_URL } from '../constants/contact';
 
 const Footer = () => {
   const { t } = useLanguage();
@@ -55,7 +56,11 @@ const Footer = () => {
         {/* Branding & Contact */}
         <div className="lg:col-span-2">
           <Link to="/" className="flex items-center no-underline group mb-4">
-            <img src={logo} alt="V Dental and Implant Center Logo" className="h-12 w-auto object-contain transition-transform group-hover:scale-105 bg-white/5 rounded-lg" />
+            <img
+              src={logo}
+              alt="V Dental and Implant Center Logo"
+              className="h-20 md:h-24 w-auto object-contain transition-transform group-hover:scale-105 bg-white rounded-xl p-2 shadow-md"
+            />
           </Link>
           <div className="mt-8 space-y-4">
             <div className="flex items-start gap-3">
@@ -64,7 +69,13 @@ const Footer = () => {
                 <p className="text-sm text-white/70 font-bold">531, 2nd Main Road, Indiranagar 2nd Stage, Bangalore</p>
                 <p className="text-xs text-white/40 mt-1">Landmark: Near BDA Complex, Bangalore</p>
                 <p>
-                  <a data-qa-id="get_directions" className="u-t-link u-d-inlineblock u-spacer--top-thin underline u-bold" href="https://www.google.com/maps/dir//12.9814995,77.6355946" target="_blank">
+                  <a
+                    data-qa-id="get_directions"
+                    className="u-t-link u-d-inlineblock u-spacer--top-thin underline u-bold"
+                    href={GOOGLE_MAPS_DIRECTIONS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <span>Get Directions</span>
                   </a>
                 </p>
@@ -76,7 +87,7 @@ const Footer = () => {
             </div>
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center flex-shrink-0 text-white/40">📧</span>
-              <p className="text-sm text-white/70">hello@smilevista.com</p>
+              <p className="text-sm text-white/70">{CLINIC_EMAIL}</p>
             </div>
           </div>
           <div className="mt-8 flex gap-3">

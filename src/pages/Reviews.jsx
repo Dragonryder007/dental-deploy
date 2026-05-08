@@ -55,12 +55,25 @@ export default function Reviews() {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE}/api/reviews`);
-      if (res.data.success && res.data.reviews.length > 0) {
-        setReviews(res.data.reviews);
-      } else {
-        // Fallback to initial reviews if DB is empty
-        setReviews(INITIAL_REVIEWS);
-      }
+      const apiReviews = (res.data?.success && Array.isArray(res.data.reviews))
+        ? res.data.reviews
+        : [];
+
+      // Even after admin publishes a review, only display it on the public page
+      // when rating is 4 stars or higher.
+      const topPublished = apiReviews
+        .filter((r) => Number(r.rating) >= 4)
+        .sort((a, b) => {
+          const r = (b.rating || 0) - (a.rating || 0);
+          if (r !== 0) return r;
+          const tA = new Date(a.createdAt || 0).getTime();
+          const tB = new Date(b.createdAt || 0).getTime();
+          return tB - tA;
+        })
+        .slice(0, 11);
+
+      // Always keep the 4 hardcoded INITIAL_REVIEWS visible alongside admin-approved ones.
+      setReviews([...INITIAL_REVIEWS, ...topPublished]);
     } catch (err) {
       console.error('Failed to fetch reviews:', err);
       setReviews(INITIAL_REVIEWS);
@@ -71,11 +84,20 @@ export default function Reviews() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, phone: digitsOnly }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const submitReview = async (e) => {
     e.preventDefault();
+    if (!/^\d{10}$/.test(formData.phone)) {
+      setFormStatus('error');
+      return;
+    }
     setFormStatus('submitting');
     try {
       await axios.post(`${API_BASE}/api/reviews`, formData);
@@ -168,7 +190,30 @@ export default function Reviews() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wide text-[color:var(--muted)] mb-2">Phone *</label>
-                    <input name="phone" required value={formData.phone} onChange={handleInputChange} className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]" placeholder="Phone Number" />
+                    <input
+                      name="phone"
+                      required
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="\d{10}"
+                      maxLength={10}
+                      minLength={10}
+                      title="Enter a 10-digit phone number"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        const allowed = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'];
+                        if (allowed.includes(e.key)) return;
+                        if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+                        if (!/^\d$/.test(e.key)) e.preventDefault();
+                      }}
+                      onPaste={(e) => {
+                        const text = (e.clipboardData || window.clipboardData).getData('text');
+                        if (!/^\d+$/.test(text)) e.preventDefault();
+                      }}
+                      className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]"
+                      placeholder="10-digit phone number"
+                    />
                   </div>
                 </div>
                 <div>
@@ -181,7 +226,11 @@ export default function Reviews() {
                 </div>
                 
                 {formStatus === 'error' && (
-                  <div className="text-red-500 text-sm font-bold">Something went wrong. Please try again.</div>
+                  <div className="text-red-500 text-sm font-bold">
+                    {!/^\d{10}$/.test(formData.phone)
+                      ? 'Please enter a valid 10-digit phone number.'
+                      : 'Something went wrong. Please try again.'}
+                  </div>
                 )}
 
                 <button 

@@ -2,6 +2,46 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+const KNOWN_PATHS = [
+  '/booking',
+  '/faq',
+  '/assessment',
+  '/ai-preview',
+  '/smile-designing',
+  '/aligners-braces',
+  '/dental-implants',
+  '/results',
+  '/reviews',
+  '/'
+];
+
+// Splits a chat message into text + clickable link tokens.
+// Recognises absolute URLs, wa.me/... numbers, and known internal paths like /faq.
+function tokenizeMessage(text) {
+  const pattern = /(https?:\/\/[^\s)]+|wa\.me\/[\w+]+|\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*)/gi;
+  const tokens = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+    }
+    const raw = match[0];
+    if (raw.startsWith('http')) {
+      tokens.push({ type: 'external', value: raw });
+    } else if (raw.startsWith('wa.me/')) {
+      tokens.push({ type: 'external', value: `https://${raw}` });
+    } else if (KNOWN_PATHS.some((p) => raw === p || raw.startsWith(p + '/') || raw.startsWith(p + '?'))) {
+      tokens.push({ type: 'internal', value: raw });
+    } else {
+      tokens.push({ type: 'text', value: raw });
+    }
+    lastIndex = match.index + raw.length;
+  }
+  if (lastIndex < text.length) tokens.push({ type: 'text', value: text.slice(lastIndex) });
+  return tokens;
+}
+
 const Chatbot = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,6 +115,45 @@ const Chatbot = () => {
     await sendMessage(text);
   };
 
+  const handleInternalLink = (e, path) => {
+    e.preventDefault();
+    setIsOpen(false);
+    navigate(path);
+  };
+
+  const renderMessageContent = (text, isUser) => {
+    if (isUser) return text;
+    const origin = window.location.origin.replace(/\/$/, '');
+    const tokens = tokenizeMessage(text);
+    return tokens.map((tok, i) => {
+      if (tok.type === 'text') return <span key={i}>{tok.value}</span>;
+      if (tok.type === 'internal') {
+        const display = `${origin}${tok.value}`;
+        return (
+          <a
+            key={i}
+            href={display}
+            onClick={(e) => handleInternalLink(e, tok.value)}
+            className="text-[color:var(--teal)] underline break-all hover:text-[color:var(--dk)]"
+          >
+            {display}
+          </a>
+        );
+      }
+      return (
+        <a
+          key={i}
+          href={tok.value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[color:var(--teal)] underline break-all hover:text-[color:var(--dk)]"
+        >
+          {tok.value}
+        </a>
+      );
+    });
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-40 font-sans">
       {isOpen && (
@@ -123,7 +202,7 @@ const Chatbot = () => {
                       : 'bg-gray-100 text-gray-800 rounded-bl-none'
                   }`}
                 >
-                  {msg.text}
+                  {renderMessageContent(msg.text, msg.type === 'user')}
                 </div>
               </div>
             ))}

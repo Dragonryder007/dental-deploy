@@ -363,24 +363,38 @@ export default function Admin() {
 
           {tab === 'leads' && (
             <div className="bg-white border border-black/5 rounded-3xl shadow-xl overflow-hidden">
-              <div className="p-6 flex items-center justify-between">
+              <div className="p-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <div className="font-bold text-[color:var(--dk)] text-lg">Leads</div>
-                  <div className="text-sm text-[color:var(--muted)]">Generated from booking submissions.</div>
+                  <div className="text-sm text-[color:var(--muted)]">
+                    Auto-captured website visitors and form submissions.
+                  </div>
                 </div>
-                <button
-                  onClick={fetchLeads}
-                  className="px-4 py-2 rounded-xl font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition"
-                >
-                  Refresh
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-2 rounded-xl bg-[color:var(--soft)] text-[color:var(--dk)] font-bold text-sm">
+                    Unique Visitors:{' '}
+                    <span className="text-[color:var(--teal)]">
+                      {leads.filter((l) => l.source === 'Website Visit').length}
+                    </span>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-[color:var(--soft)] text-[color:var(--dk)] font-bold text-sm">
+                    Total Leads: <span className="text-[color:var(--teal)]">{leads.length}</span>
+                  </div>
+                  <button
+                    onClick={fetchLeads}
+                    className="px-4 py-2 rounded-xl font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-[color:var(--soft)] text-[color:var(--dk)]">
                     <tr>
+                      <th className="text-left px-4 lg:px-6 py-4 font-bold">ID</th>
                       <th className="text-left px-4 lg:px-6 py-4 font-bold">Name</th>
-                      <th className="text-left px-4 lg:px-6 py-4 font-bold">Phone</th>
+                      <th className="text-left px-4 lg:px-6 py-4 font-bold">Phone / IP</th>
                       <th className="text-left px-6 py-4 font-bold hidden md:table-cell">Email</th>
                       <th className="text-left px-6 py-4 font-bold hidden lg:table-cell">Service</th>
                       <th className="text-left px-6 py-4 font-bold hidden lg:table-cell">Source</th>
@@ -391,39 +405,54 @@ export default function Admin() {
                   <tbody>
                     {leadsLoading ? (
                       <tr>
-                        <td className="px-6 py-6 text-[color:var(--muted)]" colSpan={7}>
+                        <td className="px-6 py-6 text-[color:var(--muted)]" colSpan={8}>
                           Loading…
                         </td>
                       </tr>
                     ) : leads.length === 0 ? (
                       <tr>
-                        <td className="px-6 py-6 text-[color:var(--muted)]" colSpan={7}>
+                        <td className="px-6 py-6 text-[color:var(--muted)]" colSpan={8}>
                           No leads yet.
                         </td>
                       </tr>
                     ) : (
-                      leads.map((l) => (
-                        <tr key={l.id} className="border-t border-black/5 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 lg:px-6 py-4 font-bold text-[color:var(--dk)]">{l.name}</td>
-                          <td className="px-4 lg:px-6 py-4">{l.phone}</td>
-                          <td className="px-6 py-4 hidden md:table-cell">{l.email || '-'}</td>
-                          <td className="px-6 py-4 hidden lg:table-cell">{l.service || '-'}</td>
-                          <td className="px-6 py-4 hidden lg:table-cell">{l.source}</td>
-                          <td className="px-6 py-4 hidden xl:table-cell">{formatDate(l.createdAt)}</td>
-                          <td className="px-4 lg:px-6 py-4">
-                            <select
-                              value={l.status || 'new'}
-                              onChange={(e) => updateLeadStatus(l.id, e.target.value)}
-                              className="bg-white border border-black/10 rounded-xl px-2 lg:px-3 py-1 lg:py-2 font-bold text-[color:var(--dk)] text-xs lg:text-sm"
-                            >
-                              <option value="new">new</option>
-                              <option value="contacted">contacted</option>
-                              <option value="won">won</option>
-                              <option value="lost">lost</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))
+                      leads.map((l) => {
+                        const isVisitor = l.source === 'Website Visit';
+                        return (
+                          <tr key={l.id} className="border-t border-black/5 hover:bg-gray-50 transition-colors">
+                            <td className="px-4 lg:px-6 py-4 font-mono font-bold text-[color:var(--teal)]">
+                              #{l.id}
+                            </td>
+                            <td className="px-4 lg:px-6 py-4 font-bold text-[color:var(--dk)]">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span>{isVisitor ? `Unique Visitor #${l.id}` : l.name}</span>
+                                {isVisitor && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[color:var(--teal)]/10 text-[color:var(--teal)] text-[10px] font-bold uppercase tracking-wide">
+                                    Visitor
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 lg:px-6 py-4">{l.phone}</td>
+                            <td className="px-6 py-4 hidden md:table-cell">{l.email || '-'}</td>
+                            <td className="px-6 py-4 hidden lg:table-cell">{l.service || '-'}</td>
+                            <td className="px-6 py-4 hidden lg:table-cell">{l.source}</td>
+                            <td className="px-6 py-4 hidden xl:table-cell">{formatDate(l.createdAt)}</td>
+                            <td className="px-4 lg:px-6 py-4">
+                              <select
+                                value={l.status || 'new'}
+                                onChange={(e) => updateLeadStatus(l.id, e.target.value)}
+                                className="bg-white border border-black/10 rounded-xl px-2 lg:px-3 py-1 lg:py-2 font-bold text-[color:var(--dk)] text-xs lg:text-sm"
+                              >
+                                <option value="new">new</option>
+                                <option value="contacted">contacted</option>
+                                <option value="won">won</option>
+                                <option value="lost">lost</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

@@ -14,7 +14,9 @@ import ourwork4 from '../images/ourwork4.jpg';
 import ourwork5 from '../images/ourwork5.png';
 import ourwork6 from '../images/ourwork6.jpg';
 import ourwork7 from '../images/ourwork7.jpg';
+import aboutDentalCheckup from '../images/about-dental-checkup.jpg';
 import { useLanguage } from '../contexts/LanguageContext';
+import { GOOGLE_MAPS_DIRECTIONS_URL } from '../constants/contact';
 
 const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
 
@@ -175,7 +177,7 @@ const Home = () => {
   const marqueeItems = [...allOurWork, ...allOurWork];
 
   return (
-    <div className="pt-20">
+    <div className="pt-20 md:pt-24 lg:pt-28">
       <SEO 
         title="World-Class Dentistry in Bengaluru"
         description="V Dental and Implant Center offers advanced digital smile designing, clear aligners, and dental implants with international standards. Book your free consultation today."
@@ -190,8 +192,13 @@ const Home = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--deep)]/95 via-[color:var(--deep)]/80 to-[color:var(--deep)]/10" />
         <div className="relative z-10 max-w-3xl text-white">
-          <div className="inline-block bg-[color:var(--teal)]/20 border border-[color:var(--teal)]/30 text-[#C9A24A] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
-            {t('home.excellence')}
+          <div className="inline-flex flex-col items-center gap-1 border border-white rounded-full px-5 py-2.5 sm:px-7 sm:py-3 md:px-8 md:py-3.5 mb-8 bg-black/10 backdrop-blur-sm text-center max-w-[min(100%,22rem)] sm:max-w-none">
+            <span className="font-sans text-[#C9A24A] text-xs sm:text-sm font-semibold tracking-wide leading-snug">
+              {t('nav.brandName')}
+            </span>
+            <span className="font-sans text-[#C9A24A] text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.18em] leading-snug">
+              {t('nav.brandTagline')}
+            </span>
           </div>
           <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif font-bold leading-[1.1] mb-6">
             {t('home.wherePerfect')} <br />
@@ -210,7 +217,7 @@ const Home = () => {
             {[
               { n: '25K+', l: t('home.happyPatients') },
               { n: '40+', l: t('home.countries') },
-              { n: '18 yrs', l: t('home.excellenceYrs') },
+              { n: '43+', l: t('home.excellenceYrs') },
               { n: '4.9★', l: t('home.rating') }
             ].map((s) => (
               <div key={s.l}>
@@ -244,15 +251,17 @@ const Home = () => {
 
       {/* About Split */}
       <section id="about" className="grid lg:grid-cols-2">
-        <div className="relative min-h-[420px] overflow-hidden">
+        <div className="relative min-h-[420px] overflow-hidden bg-[color:var(--soft)]">
           <img
-            src="https://static.vecteezy.com/system/resources/thumbnails/071/062/019/small/dental-checkup-examination-procedure-with-doctor-and-patient-free-photo.jpg"
+            src={aboutDentalCheckup}
             alt="Dentist consulting with patient"
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
           <div className="absolute bottom-6 left-6 bg-white/95 rounded-2xl px-6 py-5 shadow-2xl">
-            <div className="font-serif text-4xl font-bold text-[color:var(--teal)] leading-none">18+</div>
+            <div className="font-serif text-4xl font-bold text-[color:var(--teal)] leading-none">43+</div>
             <div className="text-sm text-[color:var(--muted)] mt-1">{t('home.excellenceYrs')}</div>
           </div>
         </div>
@@ -429,61 +438,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Doctors */}
-      <section className="py-24 px-6 bg-[color:var(--bg)]">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="text-xs font-bold tracking-[0.3em] uppercase text-[color:var(--teal)] mb-4">{t('home.doctors.title')}</div>
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-[color:var(--dk)] mb-6">
-            <span dangerouslySetInnerHTML={{ __html: t('home.doctors.subtitle').replace('{specialists}', `<span className="italic text-[color:var(--teal)]">${t('home.doctors.specialists')}</span>`) }} />
-          </h2>
-          <p className="text-[color:var(--muted)] max-w-3xl mx-auto leading-relaxed">
-            {t('home.doctors.desc')}
-          </p>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-14 grid gap-8 md:grid-cols-3">
-          {[
-            {
-              name: 'Dr. Rohan Mehta',
-              role: t('home.doctors.founder'),
-              tag: t('home.doctors.oralMax'),
-              img: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=900&q=85',
-              exp: '20+ years'
-            },
-            {
-              name: 'Dr. Priya Sharma',
-              role: t('home.doctors.leadCosmetic'),
-              tag: t('home.doctors.cosmeticAesthetic'),
-              img: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=900&q=85',
-              exp: '14 years'
-            },
-            {
-              name: 'Dr. Arjun Nair',
-              role: t('home.doctors.seniorImplant'),
-              tag: t('home.doctors.implantology'),
-              img: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=900&q=85',
-              exp: '16 years'
-            }
-          ].map((d) => (
-            <div key={d.name} className="bg-white rounded-3xl overflow-hidden border border-black/5 shadow-sm hover:shadow-xl hover:shadow-black/5 transition">
-              {/* Doctor Image Wrapper */}
-              <div className="flex justify-center pt-10">
-                <div className="w-48 h-48 rounded-[4rem] shadow-lg shadow-black/5 border border-black/10 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-all duration-500 bg-white">
-                  <img src={d.img} alt={d.name} className="w-full h-full object-contain" style={{height: '190px', width: '100%', objectFit: 'contain'}} />
-                </div>
-              </div>
-              <div className="p-8 text-center">
-                <div className="font-serif text-2xl font-bold text-[color:var(--dk)]">{d.name}</div>
-                <div className="text-sm text-[color:var(--muted)] mt-1">{d.role}</div>
-                <div className="mt-4 text-sm text-[color:var(--muted)]">
-                  {t('home.doctors.trained')} · <span className="font-bold text-[color:var(--teal)]">{d.exp}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* New Doctors Team Section */}
       <Doctors />
 
@@ -566,76 +520,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-24 px-6 bg-[color:var(--bg)]">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-end">
-          <div>
-            <div className="text-xs font-bold tracking-[0.3em] uppercase text-[color:var(--teal)] mb-4">{t('home.patientExperiences')}</div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-[color:var(--dk)] leading-tight">
-              {t('home.patientExpSub')}
-            </h2>
-          </div>
-          <p className="text-[color:var(--muted)] leading-relaxed">
-            {t('home.patientExpDesc')}
-          </p>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-14 grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            ...dynamicReviews.map(r => ({
-              q: r.comment,
-              n: r.name || 'Anonymous',
-              l: new Date(r.createdAt).toLocaleDateString(),
-              feat: true,
-              rating: r.rating
-            })),
-            {
-              feat: false,
-              q: t('home.testimonials.t1'),
-              n: 'Sara Al‑Hamdan',
-              l: 'Dubai, UAE'
-            },
-            {
-              feat: false,
-              q: t('home.testimonials.t2'),
-              n: 'James Mitchell',
-              l: 'Manchester, UK'
-            },
-            {
-              feat: false,
-              q: t('home.testimonials.t3'),
-              n: 'Anna Petrova',
-              l: 'Moscow, Russia'
-            },
-            {
-              feat: false,
-              q: 'Got my implants done — feels just like natural teeth.\nProfessional care and smooth experience from start to finish.\nCompletely changed my confidence and quality of life.',
-              n: 'V Dental and Implant Center Patient',
-              l: 'Bengaluru, India'
-            }
-          ].map((t, idx) => (
-            <div
-              key={idx}
-              className={[
-                'rounded-3xl p-8 border transition',
-                t.feat
-                  ? 'bg-gradient-to-br from-[color:var(--dk)] to-[color:var(--deep)] border-transparent text-white'
-                  : 'bg-white border-black/5 text-[color:var(--txt)] hover:shadow-xl hover:shadow-black/5'
-              ].join(' ')}
-            >
-              <div className={t.feat ? 'text-[#C9A24A]' : 'text-[color:var(--teal)]'}>
-                {'★'.repeat(t.rating || 5)}{'☆'.repeat(5 - (t.rating || 5))}
-              </div>
-              <p className={['mt-4 text-base leading-7 whitespace-pre-wrap', t.feat ? 'text-white/75' : 'text-[color:var(--muted)]'].join(' ')}>
-                {t.q}
-              </p>
-              <div className="mt-6 font-bold">{t.n}</div>
-              <div className={t.feat ? 'text-white/50 text-sm' : 'text-[color:var(--muted)] text-sm'}>{t.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Contact CTA */}
       <section id="contact" className="py-24 px-6 bg-gradient-to-br from-[color:var(--deep)] to-[color:var(--dk)] text-white">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-start">
@@ -651,14 +535,19 @@ const Home = () => {
               <div className="flex gap-4 items-start">
                 <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">📞</div>
                 <div>
-                  <div className="font-bold text-white">+91 98765 43210</div>
+                  <a href="tel:+919037151894" className="font-bold text-white hover:text-[color:var(--teal)] no-underline">+91 90371 51894</a>
                   <div className="text-sm text-white/55">{t('home.contact.phone')}</div>
                 </div>
               </div>
               <div className="flex gap-4 items-start">
                 <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">📧</div>
                 <div>
-                  <div className="font-bold text-white">hello@vdentalandimplantcenter.com</div>
+                  <a
+                    href={`mailto:${t('home.contact.emailAddress')}`}
+                    className="font-bold text-white hover:text-[color:var(--teal)] no-underline"
+                  >
+                    {t('home.contact.emailAddress')}
+                  </a>
                   <div className="text-sm text-white/55">{t('home.contact.email')}</div>
                 </div>
               </div>
@@ -667,6 +556,14 @@ const Home = () => {
                 <div>
                   <div className="font-bold text-white">{t('home.contact.locName')}</div>
                   <div className="text-sm text-white/55">{t('home.contact.location')}</div>
+                  <a
+                    href={GOOGLE_MAPS_DIRECTIONS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm font-bold text-[color:var(--teal)] underline hover:text-white"
+                  >
+                    {t('home.contact.getDirections')}
+                  </a>
                 </div>
               </div>
             </div>

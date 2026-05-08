@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 const ServicePage = ({ title, subtitle, heroImg, benefits, steps, beforeImg, afterImg, journeyTitle, outstationText }) => {
   const { t } = useLanguage();
   return (
-    <div className="bg-[color:var(--bg)] min-h-screen pt-20">
+    <div className="bg-[color:var(--bg)] min-h-screen pt-20 md:pt-24 lg:pt-28">
       {/* Hero Section */}
       <section className="relative h-[500px] flex items-center justify-center overflow-hidden">
         <img src={heroImg} alt={title} className="absolute inset-0 w-full h-full object-cover brightness-[0.65] contrast-105" />

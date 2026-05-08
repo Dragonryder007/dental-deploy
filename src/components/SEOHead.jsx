@@ -77,7 +77,7 @@ const SEOHead = ({
       'telephone': '+1-555-0000',
       'priceRange': '$$',
       'areaServed': 'Worldwide',
-      'availableLanguage': ['en', 'es', 'fr']
+      'availableLanguage': ['en', 'es', 'hi', 'kn', 'ar']
     };
 
     let script = document.querySelector('script[type="application/ld+json"]');

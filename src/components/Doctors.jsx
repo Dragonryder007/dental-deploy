@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import doctorVathsala from '../images/doctor-vathsala.png';
+import doctorNoel from '../images/doctor-noel.png';
+import doctorJishnu from '../images/doctor-jishnu.png';
 
 const Doctors = () => {
   const { t } = useLanguage();
@@ -23,7 +26,7 @@ const Doctors = () => {
         'Precancerous Lesion Screening'
       ],
       description: 'With over 43 years of clinical excellence, Dr. Vathsala Naik is a pioneering figure in implant dentistry and oral medicine. Her specialized expertise in implant case planning and oral radiology has enabled hundreds of patients to regain their confident smiles. Her meticulous approach to diagnosis and treatment planning ensures optimal outcomes for complex dental cases.',
-      image: 'https://via.placeholder.com/300x400?text=Dr.+Vathsala+Naik'
+      image: doctorVathsala
     },
     {
       id: 2,
@@ -42,7 +45,7 @@ const Doctors = () => {
         'Emergency Dental Care'
       ],
       description: 'Dr. Noel Francis brings a decade of dedicated clinical experience in restorative and endodontic dentistry. His gentle approach and advanced techniques have made him a trusted specialist for patients requiring root canal treatments and restorative work. He believes in preserving natural teeth through preventive care and expert restoration.',
-      image: 'https://via.placeholder.com/300x400?text=Dr.+Noel+Francis'
+      image: doctorNoel
     },
     {
       id: 3,
@@ -61,7 +64,7 @@ const Doctors = () => {
         'International Patient Coordination'
       ],
       description: 'Dr. Jishnu Premnath is a visionary smile design expert who transforms dreams into reality. With a keen artistic eye and clinical precision, he specializes in comprehensive smile makeovers and cosmetic dentistry planning. His role as International Patient Director reflects his commitment to providing world-class care to patients from across the globe.',
-      image: 'https://via.placeholder.com/300x400?text=Dr.+Jishnu+Premnath'
+      image: doctorJishnu
     },
     {
       id: 4,

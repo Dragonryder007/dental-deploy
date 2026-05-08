@@ -1,4 +1,9 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import hi from './locales/hi.js';
+import kn from './locales/kn.js';
+import ar from './locales/ar.js';
+
+const SUPPORTED_LANGS = new Set(['en', 'es', 'hi', 'kn', 'ar']);
 
 const translations = {
   en: {
@@ -21,7 +26,18 @@ const translations = {
       logout: 'Logout',
       welcome: 'Welcome',
       ourWork: 'Our Works',
-      aboutUs: 'About Us'
+      aboutUs: 'About Us',
+      brandName: 'V Dental and Implant Center',
+      brandTagline: 'International Centre of Excellence',
+      logoAlt: 'V Dental and Implant Center',
+      languageLabel: 'Language',
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu',
+      langEnglish: 'English',
+      langSpanish: 'Spanish',
+      langHindi: 'Hindi',
+      langKannada: 'Kannada',
+      langArabic: 'Arabic'
     },
     home: {
       heroTitle: 'Where Perfect Smiles Are Crafted',
@@ -119,12 +135,14 @@ const translations = {
       contact: {
         title: 'Get in touch',
         subtitle: 'Book your {free} consultation',
-        free: 'free consultation',
+        free: 'free',
         desc: 'Whether local or international, our team creates your personalized plan. First consultations are free and include a complete digital assessment.',
         phone: 'Mon–Sat, 9 AM – 8 PM IST',
         email: 'Response within 2 hours',
-        location: '15 mins from the city center',
-        locName: 'Koramangala, Bengaluru, India',
+        location: 'Landmark: Near BDA Complex, Bangalore',
+        locName: '531, 2nd Main Road, Indiranagar 2nd Stage, Bangalore',
+        getDirections: 'Get Directions',
+        emailAddress: 'care@vdentalandimplantcenter.com',
         formTitle: 'Request an appointment',
         formSub: 'Fill out this quick form and we\'ll reach out to schedule your free consultation.',
         firstName: 'First name',
@@ -453,7 +471,18 @@ const translations = {
       logout: 'Cerrar Sesión',
       welcome: 'Bienvenido',
       ourWork: 'Nuestros Trabajos',
-      aboutUs: 'Sobre Nosotros'
+      aboutUs: 'Sobre Nosotros',
+      brandName: 'V Centro Dental y de Implantes',
+      brandTagline: 'Centro Internacional de Excelencia',
+      logoAlt: 'Logo de V Dental and Implant Center',
+      languageLabel: 'Idioma',
+      openMenu: 'Abrir menú',
+      closeMenu: 'Cerrar menú',
+      langEnglish: 'Inglés',
+      langSpanish: 'Español',
+      langHindi: 'Hindi',
+      langKannada: 'Canarés',
+      langArabic: 'Árabe'
     },
     home: {
       heroTitle: 'Donde Se Crean Sonrisas Perfectas',
@@ -555,8 +584,10 @@ const translations = {
         desc: 'Ya sea local o internacional, nuestro equipo crea tu plan personalizado. Las primeras consultas son gratuitas e incluyen una evaluación digital completa.',
         phone: 'Lun–Sáb, 9 AM – 8 PM IST',
         email: 'Respuesta en 2 horas',
-        location: 'A 15 minutos del centro de la ciudad',
-        locName: 'Koramangala, Bengaluru, India',
+        location: 'Referencia: cerca del BDA Complex, Bangalore',
+        locName: '531, 2nd Main Road, Indiranagar 2nd Stage, Bangalore',
+        getDirections: 'Cómo llegar',
+        emailAddress: 'care@vdentalandimplantcenter.com',
         formTitle: 'Solicitar una cita',
         formSub: 'Completa este formulario rápido y nos pondremos en contacto para programar tu consulta gratuita.',
         firstName: 'Nombre',
@@ -865,21 +896,64 @@ const translations = {
       }
     }
   },
+  hi,
+  kn,
+  ar
 };
 
 const LanguageContext = createContext();
 
-export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState('en');
+const LANG_STORAGE_KEY = 'vdental_language';
 
-  const t = (path) => {
-    const keys = path.split('.');
-    let value = translations[language];
-    for (const key of keys) {
-      value = value?.[key];
+function readStoredLanguage() {
+  try {
+    const s = localStorage.getItem(LANG_STORAGE_KEY);
+    if (SUPPORTED_LANGS.has(s)) return s;
+  } catch {
+    /* ignore */
+  }
+  return 'en';
+}
+
+function lookupTranslation(lang, path) {
+  const keys = path.split('.');
+  let value = translations[lang];
+  for (const key of keys) {
+    value = value?.[key];
+  }
+  return value;
+}
+
+export const LanguageProvider = ({ children }) => {
+  const [language, setLanguageState] = useState(readStoredLanguage);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const langMap = { en: 'en', es: 'es', hi: 'hi', kn: 'kn', ar: 'ar' };
+    html.lang = langMap[language] || 'en';
+    html.dir = language === 'ar' ? 'rtl' : 'ltr';
+  }, [language]);
+
+  const setLanguage = useCallback((code) => {
+    const next = SUPPORTED_LANGS.has(code) ? code : 'en';
+    setLanguageState(next);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
     }
-    return value || path;
-  };
+  }, []);
+
+  const t = useCallback(
+    (path) => {
+      let value = lookupTranslation(language, path);
+      if (value !== undefined && value !== null && value !== '') return value;
+      value = lookupTranslation('en', path);
+      if (value !== undefined && value !== null && value !== '') return value;
+      return path;
+    },
+    [language]
+  );
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

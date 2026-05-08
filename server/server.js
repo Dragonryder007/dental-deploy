@@ -15,8 +15,10 @@ import { initDb, dbRun, dbAll, dbGet } from '../database/db.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.set('trust proxy', true);
 app.use(cors());
-app.use(bodyParser.json());
+// Allow up to ~12MB JSON so the AI Preview can ship base64-encoded photos.
+app.use(bodyParser.json({ limit: '12mb' }));
 
 // ----------------------------
 // Email (SMTP) - for localhost + production
@@ -243,22 +245,211 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ============================================
-// STEP 3: AI SMILE PREVIEW API
+// STEP 3: AI SMILE PREVIEW API (Gemini-powered)
 // ============================================
-app.post('/api/smile-preview', (req, res) => {
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+const SMILE_ANALYSIS_PROMPT = `You are an AI cosmetic-dental assistant for a smile-preview tool at V Dental and Implant Center.
+Look at the visible teeth/smile in the photo. Be friendly, accurate, and concise.
+You are NOT diagnosing medical conditions; you are suggesting cosmetic and corrective treatment OPTIONS only.
+Map every recommendation to ONE of these clinic service codes (use the code exactly):
+- "smile-designing"  (digital smile design, veneers, bonding, whitening, cosmetic shaping)
+- "aligners-braces"  (clear aligners, braces, orthodontic alignment, gap closure)
+- "dental-implants"  (missing teeth replacement, implants, full-mouth rehab)
+- "general"          (cleaning, hygiene, routine checkup, anything outside the three above)
+
+Return STRICT JSON matching this exact shape (no extra keys, no markdown):
+{
+  "concerns": string[],
+  "strengths": string[],
+  "recommendations": [{ "treatment": string, "service": string, "reason": string }],
+  "costRangeINR": string,
+  "timeline": string,
+  "narrative": string
+}
+
+Rules:
+- "concerns" and "strengths" are short bullet phrases (max ~12 words each).
+- "recommendations" must contain 1-4 items. "service" MUST be one of the four codes above.
+- "costRangeINR" is a free-text estimate (e.g. "₹25,000 – ₹1,20,000") or "" if unsure.
+- "timeline" is a free-text duration (e.g. "1-2 weeks", "3-6 months") or "" if unsure.
+- "narrative" is 2-3 friendly sentences summarising the suggested plan.
+- If teeth are NOT clearly visible, return:
+  concerns = ["Teeth are not clearly visible in this photo. Please upload a closer, well-lit smile photo facing the camera."],
+  strengths = [], recommendations = [], costRangeINR = "", timeline = "",
+  narrative = "Please share a clearer smile photo so we can give accurate suggestions."`;
+
+const ALLOWED_SERVICE_CODES = new Set(['smile-designing', 'aligners-braces', 'dental-implants', 'general']);
+
+function safeParseJson(text) {
+  if (!text) return null;
   try {
-    res.json({
+    return JSON.parse(text);
+  } catch {
+    // Strip ```json fences if Gemini wraps the JSON despite responseMimeType.
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced) {
+      try { return JSON.parse(fenced[1]); } catch { /* fall through */ }
+    }
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try { return JSON.parse(text.slice(firstBrace, lastBrace + 1)); } catch { /* ignore */ }
+    }
+    return null;
+  }
+}
+
+function normalizeAnalysis(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const concerns = Array.isArray(raw.concerns) ? raw.concerns.filter((s) => typeof s === 'string').slice(0, 8) : [];
+  const strengths = Array.isArray(raw.strengths) ? raw.strengths.filter((s) => typeof s === 'string').slice(0, 6) : [];
+  const recommendations = Array.isArray(raw.recommendations)
+    ? raw.recommendations
+        .filter((r) => r && typeof r === 'object' && typeof r.treatment === 'string')
+        .map((r) => ({
+          treatment: String(r.treatment).slice(0, 120),
+          service: ALLOWED_SERVICE_CODES.has(r.service) ? r.service : 'general',
+          reason: typeof r.reason === 'string' ? r.reason.slice(0, 280) : ''
+        }))
+        .slice(0, 4)
+    : [];
+  return {
+    concerns,
+    strengths,
+    recommendations,
+    costRangeINR: typeof raw.costRangeINR === 'string' ? raw.costRangeINR.slice(0, 80) : '',
+    timeline: typeof raw.timeline === 'string' ? raw.timeline.slice(0, 80) : '',
+    narrative: typeof raw.narrative === 'string' ? raw.narrative.slice(0, 800) : ''
+  };
+}
+
+async function analyzeSmileWithGemini({ imageBase64, mimeType }) {
+  if (!GEMINI_API_KEY) return { ok: false, reason: 'missing_api_key' };
+  if (!imageBase64) return { ok: false, reason: 'missing_image' };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: SMILE_ANALYSIS_PROMPT },
+          { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      responseMimeType: 'application/json'
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+    ]
+  };
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('Gemini API error:', response.status, errText.slice(0, 300));
+      return { ok: false, reason: `gemini_${response.status}` };
+    }
+
+    const json = await response.json();
+    const text = json?.candidates?.[0]?.content?.parts?.find((p) => typeof p.text === 'string')?.text || '';
+    const parsed = safeParseJson(text);
+    const normalized = normalizeAnalysis(parsed);
+    if (!normalized) return { ok: false, reason: 'bad_response' };
+    return { ok: true, analysis: normalized };
+  } catch (error) {
+    console.error('Gemini call failed:', error?.message || error);
+    return { ok: false, reason: 'request_failed' };
+  }
+}
+
+function fallbackAnalysis() {
+  return {
+    concerns: [],
+    strengths: [],
+    recommendations: [
+      { treatment: 'Teeth Whitening', service: 'smile-designing', reason: 'Brightens the smile and freshens overall appearance.' },
+      { treatment: 'Veneers / Smile Designing', service: 'smile-designing', reason: 'Refines tooth shape, gaps, and color for a balanced look.' },
+      { treatment: 'Routine cleaning & checkup', service: 'general', reason: 'A baseline assessment helps choose the best next step.' }
+    ],
+    costRangeINR: '',
+    timeline: '',
+    narrative: 'AI analysis is unavailable right now, so here are general smile-design starting points. Book a free consultation for a personalized plan.'
+  };
+}
+
+app.post('/api/smile-preview', async (req, res) => {
+  try {
+    const { image, originalImage, imageBase64: incomingBase64, mimeType: incomingMime } = req.body || {};
+
+    let imageBase64 = incomingBase64 || null;
+    let mimeType = incomingMime || null;
+
+    // Accept data URLs from the legacy frontend ("data:image/jpeg;base64,...").
+    if (!imageBase64 && typeof originalImage === 'string' && originalImage.startsWith('data:')) {
+      const m = originalImage.match(/^data:([^;,]+);base64,(.+)$/);
+      if (m) {
+        mimeType = mimeType || m[1];
+        imageBase64 = m[2];
+      }
+    }
+    if (!imageBase64 && typeof image === 'string' && image.startsWith('data:')) {
+      const m = image.match(/^data:([^;,]+);base64,(.+)$/);
+      if (m) {
+        mimeType = mimeType || m[1];
+        imageBase64 = m[2];
+      }
+    }
+
+    let analysis = null;
+    let source = 'fallback';
+    let reason = null;
+
+    if (imageBase64) {
+      const result = await analyzeSmileWithGemini({ imageBase64, mimeType: mimeType || 'image/jpeg' });
+      if (result.ok) {
+        analysis = result.analysis;
+        source = 'gemini';
+      } else {
+        reason = result.reason;
+      }
+    } else {
+      reason = 'missing_image';
+    }
+
+    if (!analysis) analysis = fallbackAnalysis();
+
+    return res.json({
       success: true,
-      message: 'Image processed successfully',
-      transformedImage: req.body.image,
-      recommendations: [
-        'Teeth Whitening - to brighten your smile',
-        'Veneers - for a more elegant look',
-        'Smile Designing - for perfect proportions'
-      ]
+      source,
+      reason,
+      message: source === 'gemini' ? 'Smile analyzed with Gemini AI' : 'Image processed (fallback recommendations)',
+      transformedImage: image || null,
+      analysis,
+      // Legacy field kept for older clients - flat list of recommendation strings.
+      recommendations: analysis.recommendations.map((r) => `${r.treatment}${r.reason ? ` — ${r.reason}` : ''}`)
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('smile-preview error:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -455,6 +646,56 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
+// Auto-capture every site visit as a lead (one per device/browser, deduped by sessionId).
+app.post('/api/track-visit', async (req, res) => {
+  const { path: landingPath, referrer, language, screen, sessionId } = req.body || {};
+
+  const xff = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim();
+  const ip = xff || req.ip || req.socket?.remoteAddress || 'unknown';
+  const userAgent = (req.headers['user-agent'] || 'unknown').slice(0, 500);
+
+  try {
+    if (sessionId) {
+      const existingRows = await dbAll(
+        `SELECT id, message FROM leads WHERE source = 'Website Visit'`
+      );
+      const sessionTag = `Session: ${sessionId}`;
+      const existing = existingRows.find((r) => (r.message || '').includes(sessionTag));
+      if (existing) {
+        return res.json({ success: true, leadId: existing.id, deduped: true });
+      }
+    }
+
+    const messageLines = [
+      `IP: ${ip}`,
+      `User-Agent: ${userAgent}`,
+      `Landing page: ${landingPath || '/'}`,
+      `Referrer: ${referrer || '(direct)'}`,
+      `Language: ${language || 'unknown'}`,
+      `Screen: ${screen || 'unknown'}`,
+      sessionId ? `Session: ${sessionId}` : null
+    ].filter(Boolean);
+
+    const result = await dbRun(
+      `INSERT INTO leads (name, phone, email, source, service, message, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        'Unique Visitor',
+        ip,
+        null,
+        'Website Visit',
+        null,
+        messageLines.join('\n'),
+        'new'
+      ]
+    );
+    return res.json({ success: true, leadId: result.lastID, deduped: false });
+  } catch (error) {
+    console.error('Visit tracking error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to record visit' });
+  }
+});
+
 app.get('/api/leads', requireAdmin, (req, res) => {
   dbAll(`SELECT * FROM leads ORDER BY createdAt DESC`)
     .then((rows) => res.json({ success: true, leads: rows }))
@@ -610,8 +851,8 @@ app.delete('/api/admin/reviews/:id', requireAdmin, async (req, res) => {
 // ============================================
 const CLINIC = {
   brand: 'SmileVista Dental',
-  whatsappNumber: '919731065325',
-  email: 'hello@smilevista.com',
+  whatsappNumber: '919037151894',
+  email: 'care@vdentalandimplantcenter.com',
   bookingPath: '/booking',
   faqPath: '/faq',
   assessmentPath: '/assessment',
@@ -623,50 +864,83 @@ const CLINIC = {
   ]
 };
 
-const CHATBOT_VERSION = '2026-04-22-slots-v1';
+const CHATBOT_VERSION = '2026-05-08-faq-match-v2';
 
+// Mirrors the 11 FAQs shown on the /faq page (see src/pages/FAQ.jsx and
+// src/contexts/LanguageContext.jsx q1..q11 / a1..a11). Keep these in sync so
+// the chatbot answers from the exact same content the user can read on the FAQ page.
 const FAQS = [
   {
     id: 1,
     category: 'general',
     question: 'How long do treatments take?',
     answer:
-      "Treatment duration varies by procedure. Smile designing: 1–2 weeks. Aligners: 6–18 months. Implants: 3–6 months. For an accurate plan, book a consultation."
+      'Treatment duration varies by procedure. Smile designing: 1-2 weeks. Aligners: 6-18 months. Implants: 3-6 months. Schedule a consultation for personalized timelines.'
   },
   {
     id: 2,
     category: 'implants',
     question: 'Are dental implants safe?',
     answer:
-      "Yes—implants are widely used and have a high success rate for suitable candidates. A quick consult helps confirm eligibility based on bone health and medical history."
+      "Yes, implants are FDA-approved and have a 95%+ success rate. They're made from biocompatible titanium and are designed to last a lifetime with proper care."
   },
   {
     id: 3,
     category: 'aligners',
     question: 'Can I eat with aligners?',
     answer:
-      'Remove aligners before eating or drinking anything except water. Wear them ~22 hours/day for best results.'
+      'You should remove aligners before eating or drinking anything except water. This prevents staining and damage. Wear them 22 hours daily for best results.'
   },
   {
     id: 4,
     category: 'general',
     question: 'What is the cost of treatments?',
     answer:
-      'Costs depend on complexity and the chosen plan. Share photos/X‑rays or book a consultation for a personalized estimate.'
+      'Costs vary based on complexity. We offer flexible financing options. Schedule a free consultation to get a personalized quote for your specific needs.'
   },
   {
     id: 5,
     category: 'smile-designing',
     question: 'Is smile designing permanent?',
     answer:
-      'Longevity depends on the approach. Veneers often last 10–15 years; bonding may last 5–7 years. Good hygiene and regular checkups extend results.'
+      'Smile designs using veneers typically last 10-15 years. Bonding lasts 5-7 years. Regular maintenance and good oral hygiene extend longevity.'
   },
   {
     id: 6,
     category: 'general',
     question: 'Do you accept insurance?',
     answer:
-      'We can help you understand coverage options. Share your insurer/plan during consultation and we’ll guide the next steps.'
+      'Yes, we accept most dental insurance plans. Contact our team for details about your specific coverage and any pre-authorization requirements.'
+  },
+  {
+    id: 7,
+    category: 'implants',
+    question: 'How long do dental implants last?',
+    answer: 'With proper care, implants can last many years or even a lifetime.'
+  },
+  {
+    id: 8,
+    category: 'general',
+    question: 'Is the procedure painful?',
+    answer: 'The procedure is done under anesthesia and is generally comfortable.'
+  },
+  {
+    id: 9,
+    category: 'general',
+    question: 'How long does treatment take?',
+    answer: 'Most implant treatments are completed within 3-7 days depending on the case.'
+  },
+  {
+    id: 10,
+    category: 'general',
+    question: 'Can I travel for treatment?',
+    answer: 'Yes, we provide structured plans for outstation and international patients.'
+  },
+  {
+    id: 11,
+    category: 'general',
+    question: 'Additional services?',
+    answer: 'We also offer clear aligners and braces for patients looking to straighten their teeth.'
   }
 ];
 
@@ -682,26 +956,183 @@ function includesAny(text, words) {
   return words.some((w) => text.includes(w));
 }
 
+// Words ignored during FAQ token scoring so they don't dominate weak matches.
+const FAQ_STOPWORDS = new Set([
+  'the','a','an','and','or','but','if','so','of','to','for','on','in','at','by','from','as',
+  'is','are','was','were','be','been','being','am','do','does','did','have','has','had',
+  'will','would','can','could','should','may','might','shall','must',
+  'i','you','we','they','he','she','it','me','my','your','our','their','this','that','these','those',
+  'there','here','what','how','when','where','why','which','who','whose','whom',
+  'please','tell','told','say','said','let','about','any','some','all','too','very','just','also','than','then',
+  'with','without','into','onto','over','under','out','off','up','down','again','more','most',
+  'now','really','truly','actually','basically','still','yet','already','want','need','know','think'
+]);
+
+// Predicate / topic words get a higher weight so questions like
+// "is X painful" prefer the "painful" FAQ over the "X" FAQ.
+const FAQ_TOPIC_WEIGHTS = {
+  cost: 3, costs: 3, price: 3, pricing: 3, fee: 3, fees: 3, charge: 3, charges: 3, expense: 3, quote: 2, estimate: 2,
+  pain: 3, painful: 3, hurt: 3, hurts: 3, painless: 3, sore: 2, ache: 2,
+  safe: 3, safety: 3, risk: 2, risks: 2, dangerous: 2,
+  long: 2, duration: 2, lasts: 2, last: 2, permanent: 3, permanence: 3, lifetime: 2,
+  insurance: 3, insurer: 3, coverage: 3, plan: 2, plans: 2,
+  eat: 3, eating: 3, food: 2, drink: 2, drinking: 2, chew: 2, chewing: 2,
+  travel: 3, travelling: 3, traveling: 3, outstation: 3, international: 3, abroad: 3, foreigner: 3, foreigners: 3, overseas: 3,
+  longevity: 2, years: 1, anesthesia: 2, anaesthesia: 2, sedation: 2,
+  additional: 2
+};
+
+// Lightweight synonym map - boosts FAQ matching without bringing in NLP deps.
+const FAQ_SYNONYMS = {
+  cost: ['price','pricing','fee','fees','charge','charges','expense','rate','quote','estimate','affordable','budget','costs'],
+  costs: ['cost','price','pricing','fee','fees','charge'],
+  price: ['cost','pricing','fee','fees','charge','quote','estimate','costs'],
+  pricing: ['cost','price','fee','fees','costs'],
+  fee: ['cost','price','pricing','charges','costs'],
+  fees: ['cost','price','pricing','charges','costs'],
+  pain: ['painful','hurt','hurts','sore','ache','aches','painless','discomfort'],
+  painful: ['pain','hurt','hurts','sore','ache','painless'],
+  painless: ['pain','painful','hurt'],
+  hurt: ['pain','painful','sore'],
+  long: ['duration','time','lasts','last','permanent','permanence','lifetime','longevity','long-term'],
+  duration: ['time','long','lasts','last'],
+  time: ['duration','long','lasts','last','timeline'],
+  permanent: ['lasts','last','longevity','lifetime','years','forever','permanence'],
+  longevity: ['permanent','lasts','last','lifetime','years','permanence','duration'],
+  safe: ['safety','risk','risks','dangerous','side','effects','secure','reliable'],
+  safety: ['safe','risk','risks','dangerous'],
+  eat: ['eating','food','drink','drinking','meal','meals','chew','chewing','bite'],
+  eating: ['eat','food','drink','drinking','chew'],
+  food: ['eat','eating','drink','meals'],
+  travel: ['travelling','traveling','outstation','international','abroad','foreign','foreigner','foreigners','overseas','tourist'],
+  foreigner: ['travel','foreigners','international','outstation','abroad','overseas','tourist'],
+  foreigners: ['travel','foreigner','international','outstation','abroad','overseas','tourist'],
+  outstation: ['travel','international','foreigner','foreigners','abroad'],
+  international: ['travel','foreigner','foreigners','outstation','abroad','overseas'],
+  abroad: ['travel','international','foreigner','foreigners','overseas'],
+  insurance: ['insurer','coverage','plan','plans','medical','health'],
+  coverage: ['insurance','insurer','plan','plans'],
+  aligner: ['aligners','invisalign','clear','transparent'],
+  aligners: ['aligner','invisalign','clear','transparent'],
+  invisalign: ['aligner','aligners'],
+  brace: ['braces','orthodontic','orthodontics'],
+  braces: ['brace','orthodontic','orthodontics','aligners'],
+  implant: ['implants','tooth','teeth','replacement','missing','prosthetic','titanium'],
+  implants: ['implant','tooth','teeth','replacement','missing','prosthetic','titanium'],
+  tooth: ['teeth','missing'],
+  teeth: ['tooth','missing'],
+  missing: ['lost','gap','gaps','tooth','teeth','replacement'],
+  designing: ['design','veneer','veneers','bonding','cosmetic','smile','makeover','aesthetic'],
+  design: ['designing','veneer','veneers','bonding','cosmetic','smile'],
+  veneer: ['veneers','design','designing','bonding','smile','cosmetic'],
+  veneers: ['veneer','design','designing','bonding','smile','cosmetic'],
+  bonding: ['veneer','veneers','design','designing','cosmetic'],
+  cosmetic: ['design','designing','veneer','veneers','smile','aesthetic'],
+  smile: ['designing','design','veneers','cosmetic','makeover'],
+  procedure: ['treatment','treatments','procedures','surgery','operation','therapy'],
+  procedures: ['procedure','treatment','treatments','surgery'],
+  treatment: ['treatments','procedure','procedures','therapy','surgery'],
+  treatments: ['treatment','procedure','procedures','therapy','services'],
+  service: ['services','treatment','treatments','procedure','procedures','offer','offers'],
+  services: ['service','treatment','treatments','procedure','procedures','offer','offers','additional'],
+  offer: ['offers','provide','provides','services','service','additional'],
+  offers: ['offer','provide','provides','services','service','additional'],
+  provide: ['provides','offer','offers','services','service'],
+  additional: ['extra','more','other','services','service','offer','offers'],
+  anesthesia: ['anaesthesia','sedation','numb','numbing','painless'],
+  doctor: ['dentist','consultant','specialist','clinician'],
+  dentist: ['doctor','consultant','specialist'],
+  consultation: ['consult','appointment','visit','checkup','book'],
+  appointment: ['consultation','consult','visit','book','schedule','booking'],
+  book: ['booking','appointment','schedule','consultation'],
+  booking: ['book','appointment','schedule','consultation']
+};
+
+function tokenizeFaq(text) {
+  return norm(text)
+    .split(' ')
+    .filter((tok) => tok.length >= 3 && !FAQ_STOPWORDS.has(tok));
+}
+
+function expandTokens(tokens) {
+  const expanded = new Set();
+  for (const tok of tokens) {
+    expanded.add(tok);
+    const syns = FAQ_SYNONYMS[tok];
+    if (syns) {
+      for (const syn of syns) expanded.add(syn);
+    }
+  }
+  return expanded;
+}
+
+function bigrams(tokens) {
+  const grams = [];
+  for (let i = 0; i < tokens.length - 1; i++) {
+    grams.push(`${tokens[i]} ${tokens[i + 1]}`);
+  }
+  return grams;
+}
+
 function bestFaqMatch(text) {
-  // very small, fast matcher; good enough for this project
-  const tokens = new Set(text.split(' ').filter(Boolean));
+  const userText = norm(text);
+  if (!userText) return null;
+
+  const userTokens = tokenizeFaq(userText);
+  if (userTokens.length === 0) return null;
+
+  const expanded = expandTokens(userTokens);
+  const userBigrams = bigrams(userTokens);
+
   let best = null;
   let bestScore = 0;
+
   for (const faq of FAQS) {
-    const q = norm(faq.question);
-    const a = norm(faq.answer);
+    const faqQ = norm(faq.question);
+    const faqA = norm(faq.answer);
+    const qTokens = new Set(tokenizeFaq(faqQ));
+    const aTokens = new Set(tokenizeFaq(faqA));
+
     let score = 0;
-    for (const t of tokens) {
-      if (t.length <= 2) continue;
-      if (q.includes(t)) score += 3;
-      else if (a.includes(t)) score += 1;
+    for (const tok of expanded) {
+      const w = FAQ_TOPIC_WEIGHTS[tok] || 1;
+      if (qTokens.has(tok)) {
+        score += 4 * w;
+      } else if (aTokens.has(tok)) {
+        score += 1 * w;
+      } else if (tok.length >= 4 && faqQ.includes(tok)) {
+        // Substring fallback handles plural/singular variants (cost/costs).
+        score += 2 * w;
+      } else if (tok.length >= 4 && faqA.includes(tok)) {
+        score += 1;
+      }
     }
+
+    // Bonus when entire user phrase / bigram appears in the question.
+    if (userText.length >= 4 && faqQ.includes(userText)) score += 8;
+    for (const bg of userBigrams) {
+      if (faqQ.includes(bg)) score += 3;
+      else if (faqA.includes(bg)) score += 1;
+    }
+
     if (score > bestScore) {
       bestScore = score;
       best = faq;
     }
   }
+
+  // Threshold of 5 ≈ at least one question token + a small supporting signal,
+  // which keeps weak matches from masquerading as confident answers.
   return bestScore >= 5 ? best : null;
+}
+
+const QUESTION_LEAD_RE = /^(how|what|when|where|why|which|who|can|could|do|does|did|are|is|will|would|should|may|might|has|have|whats|hows)\b/i;
+
+function looksLikeQuestion(rawText) {
+  const trimmed = String(rawText || '').trim();
+  if (!trimmed) return false;
+  if (trimmed.includes('?')) return true;
+  return QUESTION_LEAD_RE.test(trimmed);
 }
 
 function buildQuickReplies(intent) {
@@ -721,6 +1152,10 @@ function buildQuickReplies(intent) {
   }
 }
 
+function faqReply(faq) {
+  return { reply: `${faq.answer}\n\nMore: ${CLINIC.faqPath}`, intent: 'faq_match' };
+}
+
 function answerFor(text) {
   const t = norm(text);
   if (!t) {
@@ -730,14 +1165,15 @@ function answerFor(text) {
     };
   }
 
-  if (includesAny(t, ['hi', 'hello', 'hey', 'good morning', 'good evening'])) {
+  if (/^(hi+|hello+|hey+|hola|namaste|good\s+(morning|afternoon|evening))\b/.test(t)) {
     return {
       reply: `Hello. I’m the ${CLINIC.brand} assistant. I can help with treatments, pricing guidance, and booking. What would you like to do?`,
       intent: 'greeting'
     };
   }
 
-  // Direct intents
+  // Operational intents always win - the user is asking us to *do* something,
+  // not asking a content question.
   if (includesAny(t, ['time slot', 'time slots', 'available slots', 'available times', 'slots', 'timing', 'timings'])) {
     const slotList = AVAILABLE_SLOTS.map((s) => `- ${s}`).join('\n');
     return {
@@ -755,10 +1191,53 @@ function answerFor(text) {
     };
   }
 
+  if (includesAny(t, ['emergency', 'urgent', 'swelling', 'bleeding'])) {
+    return {
+      reply:
+        `If this is severe pain, swelling, bleeding, fever, or trouble breathing/swallowing, seek urgent medical care.\n\nFor dental emergencies, message us on WhatsApp: wa.me/${CLINIC.whatsappNumber} (include your symptoms + photo if possible).`,
+      intent: 'emergency'
+    };
+  }
+
+  if (includesAny(t, ['assessment', 'quiz', 'recommend', 'recommendation', 'treatment recommendation'])) {
+    return {
+      reply:
+        `You can take our quick assessment here: ${CLINIC.assessmentPath}. It suggests a likely treatment based on your answers.\n\nFor clinical accuracy, we confirm with an in-person exam.`,
+      intent: 'assessment'
+    };
+  }
+
+  if (includesAny(t, ['ai preview', 'smile preview'])) {
+    return {
+      reply:
+        `Try the AI smile preview here: ${CLINIC.aiPreviewPath}. It’s a visual simulation (real outcomes can vary).`,
+      intent: 'ai_preview'
+    };
+  }
+
+  if (includesAny(t, ['contact', 'email', 'mail', 'whatsapp'])) {
+    return {
+      reply: `Contact us:\n- Email: ${CLINIC.email}\n- WhatsApp: wa.me/${CLINIC.whatsappNumber}`,
+      intent: 'contact'
+    };
+  }
+
+  if (includesAny(t, ['faq page', 'open faq', 'browse faq', 'all faqs', 'faq link'])) {
+    return { reply: `You can browse FAQs here: ${CLINIC.faqPath}`, intent: 'faq' };
+  }
+
+  // For anything that looks like a real question, try to answer it directly
+  // from the FAQ list (same content as the /faq page) using string matching.
+  if (looksLikeQuestion(text)) {
+    const faq = bestFaqMatch(t);
+    if (faq) return faqReply(faq);
+  }
+
+  // Topic-level intents (only if FAQ didn't already win above).
   if (includesAny(t, ['treat', 'treatment', 'service', 'services', 'offer', 'do you do'])) {
     const serviceList = CLINIC.services.map((s) => `- ${s.label}: ${s.path}`).join('\n');
     return {
-      reply: `We offer:\n${serviceList}\n\nWant details on one (smile designing / aligners / implants)?`,
+      reply: `We offer:\n${serviceList}`,
       intent: 'services'
     };
   }
@@ -795,46 +1274,10 @@ function answerFor(text) {
     };
   }
 
-  if (includesAny(t, ['emergency', 'urgent', 'pain', 'swelling', 'bleeding'])) {
-    return {
-      reply:
-        `If this is severe pain, swelling, bleeding, fever, or trouble breathing/swallowing, seek urgent medical care.\n\nFor dental emergencies, message us on WhatsApp: wa.me/${CLINIC.whatsappNumber} (include your symptoms + photo if possible).`,
-      intent: 'emergency'
-    };
-  }
-
-  if (includesAny(t, ['assessment', 'quiz', 'recommend', 'recommendation', 'treatment recommendation'])) {
-    return {
-      reply:
-        `You can take our quick assessment here: ${CLINIC.assessmentPath}. It suggests a likely treatment based on your answers.\n\nFor clinical accuracy, we confirm with an in-person exam.`,
-      intent: 'assessment'
-    };
-  }
-
-  if (includesAny(t, ['ai preview', 'preview', 'smile preview', 'photo', 'image'])) {
-    return {
-      reply:
-        `Try the AI smile preview here: ${CLINIC.aiPreviewPath}. It’s a visual simulation (real outcomes can vary).`,
-      intent: 'ai_preview'
-    };
-  }
-
-  if (includesAny(t, ['faq', 'questions', 'common questions'])) {
-    return { reply: `You can browse FAQs here: ${CLINIC.faqPath}`, intent: 'faq' };
-  }
-
-  if (includesAny(t, ['contact', 'email', 'mail', 'whatsapp', 'phone'])) {
-    return {
-      reply: `Contact us:\n- Email: ${CLINIC.email}\n- WhatsApp: wa.me/${CLINIC.whatsappNumber}`,
-      intent: 'contact'
-    };
-  }
-
-  // FAQ-style fallback
-  const faq = bestFaqMatch(t);
-  if (faq) {
-    return { reply: `${faq.answer}\n\nMore: ${CLINIC.faqPath}`, intent: 'faq_match' };
-  }
+  // Last resort: try FAQ matching one more time even for non-question phrasings
+  // ("aligner pain", "implant cost"), then fall back to the default prompt.
+  const fallbackFaq = bestFaqMatch(t);
+  if (fallbackFaq) return faqReply(fallbackFaq);
 
   return {
     reply:

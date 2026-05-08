@@ -2,18 +2,24 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const LanguageSwitcher = () => {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
-  const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'es', name: 'Spanish', flag: '🇪🇸' }
-  ];
+  const languages = useMemo(
+    () => [
+      { code: 'en', name: t('nav.langEnglish'), flag: '🇺🇸' },
+      { code: 'es', name: t('nav.langSpanish'), flag: '🇪🇸' },
+      { code: 'hi', name: t('nav.langHindi'), flag: '🇮🇳' },
+      { code: 'kn', name: t('nav.langKannada'), flag: '🇮🇳' },
+      { code: 'ar', name: t('nav.langArabic'), flag: '🇸🇦' }
+    ],
+    [language, t]
+  );
 
   const current = useMemo(
     () => languages.find((l) => l.code === language) ?? languages[0],
-    [language]
+    [languages, language]
   );
 
   useEffect(() => {
@@ -36,21 +42,21 @@ const LanguageSwitcher = () => {
   }, []);
 
   return (
-    <div ref={rootRef} className="relative flex items-center gap-2">
-      <span className="text-xs font-bold text-gray-500 uppercase">Language:</span>
+    <div ref={rootRef} className="relative flex items-center gap-1.5">
+      <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">{t('nav.languageLabel')}:</span>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition"
+        className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-1">
           <span aria-hidden="true">{current.flag}</span>
           <span>{current.code.toUpperCase()}</span>
         </span>
         <svg
-          className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -63,7 +69,7 @@ const LanguageSwitcher = () => {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-44 bg-white border border-black/5 rounded-2xl shadow-xl overflow-hidden z-50"
+          className="absolute right-0 top-full mt-2 w-52 max-h-[min(70vh,24rem)] overflow-y-auto bg-white border border-black/5 rounded-2xl shadow-xl z-50"
         >
           {languages.map((lang) => {
             const active = lang.code === language;
@@ -77,7 +83,7 @@ const LanguageSwitcher = () => {
                   setOpen(false);
                 }}
                 className={[
-                  'w-full text-left px-4 py-3 text-sm font-bold transition flex items-center gap-2',
+                  'w-full text-start px-4 py-3 text-sm font-bold transition flex items-center gap-2',
                   active ? 'bg-[color:var(--teal)] text-white' : 'hover:bg-[color:var(--soft)] text-[color:var(--dk)]'
                 ].join(' ')}
               >

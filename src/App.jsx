@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
+import { recordVisit } from './utils/visitorTracker';
 
 import Chatbot from './components/Chatbot';
 
@@ -20,9 +21,22 @@ import { Login, Register } from './pages/Placeholders';
 import Admin from './pages/Admin';
 import Reviews from './pages/Reviews';
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function AppLayout() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    if (isAdmin) return;
+    recordVisit();
+  }, [isAdmin]);
 
   return (
     <>
@@ -53,6 +67,7 @@ function AppLayout() {
 function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ScrollToTop />
       <AppLayout />
     </Router>
   );

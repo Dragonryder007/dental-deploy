@@ -11,11 +11,11 @@ const MOCK_DB_DIR = path.join(__dirname, 'mock_db');
 dotenv.config();
 
 const dbConfig = {
-  host: process.env.MYSQL_HOST || '193.203.184.191',
+  host: process.env.MYSQL_HOST || 'localhost',
   port: process.env.MYSQL_PORT ? Number(process.env.MYSQL_PORT) : 3306,
-  user: process.env.MYSQL_USER || 'u817245059_adminV',
-  password: process.env.MYSQL_PASSWORD || 'Vdental1',
-  database: process.env.MYSQL_DATABASE || 'u817245059_vdental'
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE
 };
 
 let pool;
@@ -115,12 +115,15 @@ export async function initDb() {
     console.log('✅ Database Tables Verified');
     return pool;
   } catch (err) {
-    // Bypass MySQL errors for local development
-    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR') {
+    // Only bypass if we are explicitly in a local dev environment without a DB
+    if (process.env.NODE_ENV !== 'production' && (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND')) {
       console.warn(`⚠️ MySQL connection failed to ${dbConfig.host}. Bypassing with JSON mock database for local development.`);
       useMockJson = true;
       return null;
     }
+    console.error('❌ CRITICAL: Database connection failed.');
+    console.error('Error Code:', err.code);
+    console.error('Check your .env variables: MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE');
     throw err;
   }
 }

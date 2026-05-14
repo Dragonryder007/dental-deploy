@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import doctorVathsala from '../images/doctor-vathsala.png';
 import doctorNoel from '../images/doctor-noel.png';
@@ -106,24 +107,26 @@ const Doctors = () => {
   ];
 
   return (
-    <section className="py-24 px-6 bg-[color:var(--bg)]">
-      <div className="max-w-7xl mx-auto">
+    <section className="py-24 px-4 sm:px-6 bg-[color:var(--bg)] min-w-0 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto min-w-0">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-[color:var(--teal)]/10 shadow-sm text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-6">
-            <span className="w-3 h-3 rounded-full bg-[color:var(--teal)] shadow-[0_0_8px_rgba(0,102,102,0.4)]" />
-            {t('home.doctors.title') || 'Our Doctors'}
+        <div className="text-center mb-16 min-w-0">
+          <div className="inline-flex flex-wrap items-center justify-center gap-3 px-6 py-2 rounded-full bg-white border border-[color:var(--teal)]/10 shadow-sm text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-6 max-w-full">
+            <span className="w-3 h-3 rounded-full bg-[color:var(--teal)] shadow-[0_0_8px_rgba(0,102,102,0.4)] shrink-0" />
+            <span className="break-words text-left sm:text-center">{t('home.doctors.title')}</span>
           </div>
-          <h2 className="text-5xl md:text-6xl font-serif font-bold text-[color:var(--dk)] mb-6 leading-tight">
-            Meet Our <span className="italic text-[color:var(--teal)]">Expert Team</span> of Specialists
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-[color:var(--dk)] mb-6 leading-tight break-words px-1">
+            {t('home.doctors.teamH2Before')}
+            <span className="italic text-[color:var(--teal)]">{t('home.doctors.teamH2Accent')}</span>
+            {t('home.doctors.teamH2After')}
           </h2>
           <p className="text-[color:var(--muted)] max-w-3xl mx-auto text-lg leading-relaxed">
-            Our team of highly qualified and experienced dental professionals is dedicated to providing you with the best possible care and exceptional treatment outcomes.
+            {t('home.doctors.teamIntro')}
           </p>
         </div>
 
         {/* Doctors Grid */}
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 min-w-0">
           {doctors.map((doctor) => (
             <div
               key={doctor.id}
@@ -136,7 +139,7 @@ const Doctors = () => {
                   {doctor.image.includes('placeholder') ? (
                     <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[color:var(--teal)]/10 to-[color:var(--soft)] text-center p-4">
                       <div className="text-5xl mb-2">📷</div>
-                      <p className="text-xs font-bold text-[color:var(--muted)] tracking-wide uppercase">Photo Coming Soon</p>
+                      <p className="text-xs font-bold text-[color:var(--muted)] tracking-wide uppercase">{t('home.doctors.photoSoon')}</p>
                       <p className="text-[0.65rem] text-[color:var(--muted)] mt-2">{doctor.name}</p>
                     </div>
                   ) : (
@@ -163,7 +166,7 @@ const Doctors = () => {
                 
                 <div className="mt-auto pt-4 border-t border-black/5">
                   <span className="text-xs font-bold text-[color:var(--dk)] group-hover:text-[color:var(--teal)] transition-colors flex items-center gap-1">
-                    View Full Profile <span className="text-lg">→</span>
+                    {t('home.doctors.viewProfile')} <span className="text-lg">→</span>
                   </span>
                 </div>
               </div>
@@ -174,17 +177,17 @@ const Doctors = () => {
         {/* Call to Action */}
         <div className="mt-20 text-center p-10 rounded-3xl bg-gradient-to-r from-[color:var(--teal)]/10 to-[color:var(--soft)] border border-[color:var(--teal)]/20">
           <h3 className="text-2xl md:text-3xl font-serif font-bold text-[color:var(--dk)] mb-4">
-            Ready to Experience Expert Care?
+            {t('home.doctors.ctaTitle')}
           </h3>
           <p className="text-[color:var(--muted)] mb-6 max-w-2xl mx-auto">
-            Schedule a consultation with our specialists and discover how we can help you achieve your perfect smile.
+            {t('home.doctors.ctaDesc')}
           </p>
-          <a
-            href="/booking"
-            className="inline-block bg-[color:var(--teal)] text-white px-10 py-4 rounded-2xl font-bold hover:bg-[color:var(--dk)] transition-all shadow-lg shadow-[color:var(--teal)]/20 active:scale-95"
+          <Link
+            to="/booking"
+            className="inline-block bg-[color:var(--teal)] text-white px-10 py-4 rounded-2xl font-bold hover:bg-[color:var(--dk)] transition-all shadow-lg shadow-[color:var(--teal)]/20 active:scale-95 no-underline"
           >
-            Book Your Consultation →
-          </a>
+            {t('home.doctors.ctaButton')} →
+          </Link>
         </div>
       </div>
 

@@ -18,6 +18,7 @@ const BookingPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
+  const [bookingError, setBookingError] = useState(null);
 
   // Review State
   const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
@@ -39,17 +40,47 @@ const BookingPage = () => {
     }
   };
 
+  const isSlotDisabled = (slot, selectedDate = formData.date) => {
+    if (!selectedDate) return false;
+
+    const now = new Date();
+    // Get current local date in YYYY-MM-DD format
+    const todayStr = now.toLocaleDateString('en-CA');
+
+    // If selected date is in the future, all slots are enabled
+    if (selectedDate > todayStr) return false;
+    // If selected date is in the past, disable all (safety check)
+    if (selectedDate < todayStr) return true;
+
+    // It is today, check if the slot time has already passed
+    const [time, modifier] = slot.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    const slotDateTime = new Date(now);
+    slotDateTime.setHours(hours, minutes, 0, 0);
+
+    return slotDateTime < now;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      // If date changes to today, clear time if it's already passed
+      if (name === 'date' && next.time && isSlotDisabled(next.time, value)) {
+        next.time = '';
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setBookingError(null);
 
     const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
     try {
@@ -60,8 +91,13 @@ const BookingPage = () => {
         setSubmitted(true);
       }
     } catch (error) {
-      console.error('Booking error:', error);
-      alert('Error booking appointment. Please try again.');
+      if (error.response && error.response.status === 409) {
+        // Specifically handle the "Slot Taken" scenario
+        setBookingError(error.response.data.error || 'This slot was just taken by another user. Please select a different time.');
+      } else {
+        console.error('Booking error:', error);
+        setBookingError('Something went wrong while booking. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -154,6 +190,7 @@ const BookingPage = () => {
                 onClick={() => {
                   setSubmitted(false);
                   setEmailStatus(null);
+                  setBookingError(null);
                   setFormData({
                     name: '',
                     phone: '',
@@ -300,7 +337,7 @@ const BookingPage = () => {
                     value={formData.date}
                     onChange={handleChange}
                     required
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toLocaleDateString('en-CA')}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-[color:var(--teal)]"
                   />
                 </div>
@@ -309,20 +346,26 @@ const BookingPage = () => {
               <div className="mb-4">
                 <label className="block text-[color:var(--dk)] font-bold mb-3">{t('booking.timeSlot')}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, time: slot }))}
-                      className={`py-2 px-3 rounded-lg font-semibold text-sm transition ${
-                        formData.time === slot
-                          ? 'bg-[color:var(--teal)] text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:border-[color:var(--teal)]'
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
+                  {availableSlots.map((slot) => {
+                    const disabled = isSlotDisabled(slot);
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => setFormData(prev => ({ ...prev, time: slot }))}
+                        className={`py-2 px-3 rounded-lg font-semibold text-sm transition ${
+                          formData.time === slot
+                            ? 'bg-[color:var(--teal)] text-white'
+                            : disabled
+                            ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
+                            : 'bg-white border border-gray-300 text-gray-700 hover:border-[color:var(--teal)]'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -339,6 +382,12 @@ const BookingPage = () => {
                 placeholder={t('booking.goalsPlaceholder')}
               ></textarea>
             </div>
+
+            {bookingError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl relative mb-6" role="alert">
+                <span className="block sm:inline">{bookingError}</span>
+              </div>
+            )}
 
             {/* Submit */}
             <button

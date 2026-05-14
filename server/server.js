@@ -523,7 +523,11 @@ app.post('/api/appointments', async (req, res) => {
     );
     appointmentId = result.lastID;
   } catch (error) {
-    console.error('❌ Appointment insert error:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      console.warn('Attempted to book an already taken slot:', req.body.date, req.body.time);
+      return res.status(409).json({ success: false, error: 'This slot is no longer available. Please choose another time.' });
+    }
+    console.error('❌ Appointment insert error:', error.message);
     return res.status(500).json({ success: false, error: 'Failed to save appointment' });
   }
 

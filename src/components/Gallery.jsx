@@ -21,7 +21,7 @@ const Gallery = ({ onSelectImage }) => {
 
   const fetchGallery = async () => {
     try {
-      const response = await axios.get('/api/gallery');
+      const response = await axios.get(`${API_BASE}/api/gallery`);
       setGallery(response.data.gallery);
     } catch (error) {
       setGallery([

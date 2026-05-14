@@ -94,7 +94,18 @@ const translations = {
         leadCosmetic: 'Lead Cosmetic & Aesthetic Dentist',
         cosmeticAesthetic: 'Cosmetic & Aesthetic',
         seniorImplant: 'Senior Implantologist',
-        implantology: 'Implantology'
+        implantology: 'Implantology',
+        teamH2Before: 'Meet Our ',
+        teamH2Accent: 'Expert Team',
+        teamH2After: ' of Specialists',
+        teamIntro:
+          'Our team of highly qualified and experienced dental professionals is dedicated to providing you with the best possible care and exceptional treatment outcomes.',
+        ctaTitle: 'Ready to Experience Expert Care?',
+        ctaDesc:
+          'Schedule a consultation with our specialists and discover how we can help you achieve your perfect smile.',
+        ctaButton: 'Book Your Consultation',
+        viewProfile: 'View Full Profile',
+        photoSoon: 'Photo Coming Soon'
       },
       tourism: {
         title: 'Medical Tourism',
@@ -403,7 +414,18 @@ const translations = {
       q10: 'Can I travel for treatment?',
       a10: 'Yes, we provide structured plans for outstation and international patients.',
       q11: 'ADDITIONAL SERVICES?',
-      a11: 'We also offer clear aligners and braces for patients looking to straighten their teeth.'
+      a11: 'We also offer clear aligners and braces for patients looking to straighten their teeth.',
+      dentalFaqTitle: 'Dental Implants — detailed FAQ',
+      dentalFaqSubtitle: 'Everything you need to know about your implant journey, answered by our experts.',
+      dentalFaqBodyNote: '',
+      diTitle0: 'Common Patient Questions',
+      diTitle1: '1. BASICS (Curiosity + Awareness)',
+      diTitle2: '2. FEAR BREAKERS (Viral + Conversion Core)',
+      diTitle3: '3. RESULTS & CONFIDENCE (Desire + Transformation)',
+      diTitle4: '4. ELIGIBILITY (Smart Lead Qualification)',
+      diTitle5: '5. PROCEDURE & RECOVERY (Remove Uncertainty)',
+      diTitle6: '6. COST & VALUE (Decision Trigger 💰)',
+      diTitle7: '7. ADVANCED / HIGH-TICKET CASES (Authority Positioning)'
     },
     reviews: {
       giveReview: 'Give Review',
@@ -539,7 +561,18 @@ const translations = {
         leadCosmetic: 'Dentista Estético y Cosmético Principal',
         cosmeticAesthetic: 'Cosmético y Estético',
         seniorImplant: 'Implantólogo Senior',
-        implantology: 'Implantología'
+        implantology: 'Implantología',
+        teamH2Before: 'Conozca a nuestro ',
+        teamH2Accent: 'Equipo Experto',
+        teamH2After: ' de especialistas',
+        teamIntro:
+          'Nuestro equipo de profesionales dentales altamente cualificados y con amplia experiencia se dedica a brindarle la mejor atención posible y resultados de tratamiento excepcionales.',
+        ctaTitle: '¿Listo para vivir una atención experta?',
+        ctaDesc:
+          'Programe una consulta con nuestros especialistas y descubra cómo podemos ayudarle a lograr la sonrisa perfecta.',
+        ctaButton: 'Reserve su consulta',
+        viewProfile: 'Ver perfil completo',
+        photoSoon: 'Foto próximamente'
       },
       tourism: {
         title: 'Turismo Médico',
@@ -848,7 +881,18 @@ const translations = {
       q10: '¿Puedo viajar para el tratamiento?',
       a10: 'Sí, ofrecemos planes estructurados para pacientes foráneos e internacionales.',
       q11: '¿SERVICIOS ADICIONALES?',
-      a11: 'También ofrecemos alineadores transparentes y frenos para pacientes que buscan enderezar sus dientes.'
+      a11: 'También ofrecemos alineadores transparentes y frenos para pacientes que buscan enderezar sus dientes.',
+      dentalFaqTitle: 'Implantes dentales — preguntas frecuentes detalladas',
+      dentalFaqSubtitle: 'Todo lo que necesita saber sobre su proceso de implantes, respondido por nuestros expertos.',
+      dentalFaqBodyNote: '',
+      diTitle0: 'Preguntas frecuentes de pacientes',
+      diTitle1: '1. FUNDAMENTOS (Curiosidad y conciencia)',
+      diTitle2: '2. DISIPAR MIEDOS (Confianza y conversión)',
+      diTitle3: '3. RESULTADOS Y CONFIANZA (Transformación)',
+      diTitle4: '4. IDONEIDAD (Evaluación inteligente)',
+      diTitle5: '5. PROCEDIMIENTO Y RECUPERACIÓN',
+      diTitle6: '6. COSTE Y VALOR (Decisión)',
+      diTitle7: '7. CASOS AVANZADOS (Autoridad clínica)'
     },
     reviews: {
       giveReview: 'Dar Reseña',

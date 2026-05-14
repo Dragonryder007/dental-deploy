@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 import SEO from '../components/SEO';
 
-const API_BASE = '';
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
 
 function resolveMediaUrl(url) {
   if (!url) return url;
@@ -26,7 +26,7 @@ const ResultsPage = () => {
 
   const fetchGallery = async () => {
     try {
-      const response = await axios.get('/api/gallery');
+      const response = await axios.get(`${API_BASE}/api/gallery`);
       setGallery(response.data.gallery);
       setLoading(false);
     } catch (error) {

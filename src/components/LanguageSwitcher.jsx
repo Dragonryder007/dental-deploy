@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const LanguageSwitcher = () => {
+const LanguageSwitcher = ({ menuPlacement = 'down' } = {}) => {
   const { language, setLanguage, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const openUp = menuPlacement === 'up';
 
   const languages = useMemo(
     () => [
@@ -42,12 +43,18 @@ const LanguageSwitcher = () => {
   }, []);
 
   return (
-    <div ref={rootRef} className="relative flex items-center gap-1.5">
-      <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">{t('nav.languageLabel')}:</span>
+    <div
+      ref={rootRef}
+      className={[
+        'relative flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0',
+        open ? 'z-[100]' : 'z-auto'
+      ].join(' ')}
+    >
+      <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase shrink-0">{t('nav.languageLabel')}:</span>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition"
+        className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold bg-[color:var(--soft)] text-[color:var(--dk)] hover:bg-white border border-black/5 transition shrink-0 max-w-full"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -69,7 +76,10 @@ const LanguageSwitcher = () => {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-52 max-h-[min(70vh,24rem)] overflow-y-auto bg-white border border-black/5 rounded-2xl shadow-xl z-50"
+          className={[
+            'absolute w-52 max-h-[min(55dvh,20rem)] overflow-y-auto overscroll-contain bg-white border border-black/5 rounded-2xl shadow-xl touch-pan-y',
+            openUp ? 'left-0 bottom-full mb-2' : 'right-0 top-full mt-2'
+          ].join(' ')}
         >
           {languages.map((lang) => {
             const active = lang.code === language;

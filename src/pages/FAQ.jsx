@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -7,19 +6,14 @@ import SEO from '../components/SEO';
 import DentalImplantsFAQ from '../components/DentalImplantsFAQ';
 
 const FAQPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [faqs, setFaqs] = useState([]);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchFAQs();
-  }, []);
-
-  const fetchFAQs = async () => {
-    // We use localized FAQs directly to support seamless language switching
-    const localizedFaqs = [
+  const buildLocalizedFaqs = useCallback(() => {
+    return [
       { id: 1, category: 'general', question: t('faq.q1'), answer: t('faq.a1') },
       { id: 2, category: 'implants', question: t('faq.q2'), answer: t('faq.a2') },
       { id: 3, category: 'aligners', question: t('faq.q3'), answer: t('faq.a3') },
@@ -32,9 +26,13 @@ const FAQPage = () => {
       { id: 10, category: 'general', question: t('faq.q10'), answer: t('faq.a10') },
       { id: 11, category: 'general', question: t('faq.q11'), answer: t('faq.a11') }
     ];
-    setFaqs(localizedFaqs);
+  }, [t]);
+
+  useEffect(() => {
+    setFaqs(buildLocalizedFaqs());
     setLoading(false);
-  };
+    setExpanded(null);
+  }, [language, buildLocalizedFaqs]);
 
   const filteredFaqs = faqs.filter(faq =>
     faq.question.toLowerCase().includes(search.toLowerCase()) ||

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -85,7 +86,7 @@ const Chatbot = () => {
     setMessages((prev) => [...prev, { type: 'user', text: msg }]);
     setLoading(true);
 
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
     try {
       const response = await axios.post(`${API_BASE}/api/chat`, { message: msg });
       if (response?.data?.chatbotVersion) {
@@ -154,49 +155,56 @@ const Chatbot = () => {
     });
   };
 
-  return (
-    <div className="fixed bottom-6 right-6 z-40 font-sans">
+  const chatUi = (
+    <>
       {isOpen && (
-        <div className="bg-white rounded-2xl shadow-2xl w-96 max-w-[calc(100vw-2rem)] flex flex-col h-[560px] mb-4 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div
+          className="chatbot-panel rounded-lg border border-black/10 bg-white text-xs font-sans shadow-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chat assistant"
+        >
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-5 py-4 text-white border-b border-white/10">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="w-6 h-6 text-cyan-200" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2a1 1 0 0 1 1 1v1.06A7.002 7.002 0 0 1 19 11v5a4 4 0 0 1-4 4h-1v1a1 1 0 1 1-2 0v-1h-2v1a1 1 0 1 1-2 0v-1H7a4 4 0 0 1-4-4v-5a7.002 7.002 0 0 1 6-6.94V3a1 1 0 0 1 1-1h2ZM5 11v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5a5 5 0 0 0-5-5h-2a5 5 0 0 0-5 5Zm4 1a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 9 12Zm6 0a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 15 12Z" />
-                </svg>
+          <div className="shrink-0 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 px-2.5 py-2 text-white border-b border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-cyan-200" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2a1 1 0 0 1 1 1v1.06A7.002 7.002 0 0 1 19 11v5a4 4 0 0 1-4 4h-1v1a1 1 0 1 1-2 0v-1h-2v1a1 1 0 1 1-2 0v-1H7a4 4 0 0 1-4-4v-5a7.002 7.002 0 0 1 6-6.94V3a1 1 0 0 1 1-1h2ZM5 11v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5a5 5 0 0 0-5-5h-2a5 5 0 0 0-5 5Zm4 1a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 9 12Zm6 0a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 15 12Z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-bold leading-tight">V Dental Assistant</h3>
+                  <p className="hidden text-[9px] text-white/70 md:block leading-snug">Quick answers • booking • FAQs</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-lg tracking-wide">V Dental and Implant Center Assistant</h3>
-                <p className="text-xs text-white/70">Quick answers • booking • pricing • FAQs</p>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => sendMessage('Pricing')}
+                  disabled={loading}
+                  className="hidden rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50 min-[340px]:inline-flex"
+                >
+                  Pricing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/10 text-xs transition hover:bg-white/15"
+                  aria-label="Close chat"
+                >
+                  ✕
+                </button>
               </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => sendMessage('Pricing')}
-                disabled={loading}
-                className="rounded-xl px-4 py-2 bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition disabled:opacity-50"
-              >
-                Pricing
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 transition flex items-center justify-center"
-                aria-label="Close chat"
-              >
-                ✕
-              </button>
             </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gradient-to-b from-white to-[color:var(--soft)]/40">
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain bg-gradient-to-b from-white to-[color:var(--soft)]/40 px-2.5 py-1.5">
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-lg whitespace-pre-wrap break-words ${
+                  className={`max-w-[90%] px-2.5 py-1 rounded-md text-[11px] leading-snug whitespace-pre-wrap break-words sm:max-w-[12rem] ${
                     msg.type === 'user'
                       ? 'bg-[color:var(--teal)] text-white rounded-br-none'
                       : 'bg-gray-100 text-gray-800 rounded-bl-none'
@@ -208,11 +216,11 @@ const Chatbot = () => {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 px-4 py-2 rounded-lg rounded-bl-none">
+                <div className="rounded-lg rounded-bl-none bg-gray-100 px-4 py-2">
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500"></div>
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '0.2s' }}></div>
                   </div>
                 </div>
               </div>
@@ -222,15 +230,15 @@ const Chatbot = () => {
 
           {/* Quick Replies */}
           {!loading && !input.trim() && suggestedReplies?.length ? (
-            <div className="px-4 py-2 border-t border-gray-200 bg-white">
-              <p className="text-xs text-gray-500 mb-2">Suggested</p>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="shrink-0 border-t border-gray-200 bg-white px-2.5 py-1">
+              <p className="mb-1 text-[9px] text-gray-500">Suggested</p>
+              <div className="grid grid-cols-2 gap-1">
                 {suggestedReplies.slice(0, 4).map((reply, idx) => (
                   <button
                     key={`${reply}-${idx}`}
                     type="button"
                     onClick={() => sendMessage(reply)}
-                    className="text-xs bg-[color:var(--soft)] text-[color:var(--dk)] px-3 py-2 rounded-xl hover:bg-white transition font-semibold border border-black/5 text-left"
+                    className="rounded-md border border-black/5 bg-[color:var(--soft)] px-1.5 py-1 text-left text-[10px] font-semibold text-[color:var(--dk)] transition hover:bg-white"
                   >
                     {reply}
                   </button>
@@ -240,19 +248,19 @@ const Chatbot = () => {
           ) : null}
 
           {/* Input */}
-          <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-4 flex gap-2">
+          <form onSubmit={handleSendMessage} className="shrink-0 flex min-w-0 gap-1 border-t border-gray-200 p-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about booking, pricing, services…"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[color:var(--teal)] text-sm"
+              placeholder="Ask about booking, pricing…"
+              className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-[11px] focus:border-[color:var(--teal)] focus:outline-none"
               disabled={loading}
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="bg-[color:var(--teal)] text-white px-4 py-2 rounded-lg hover:bg-[color:var(--dk)] transition disabled:opacity-50 font-bold"
+              className="shrink-0 rounded bg-[color:var(--teal)] px-2 py-1 text-[11px] font-bold text-white transition hover:bg-[color:var(--dk)] disabled:opacity-50"
             >
               Send
             </button>
@@ -260,23 +268,27 @@ const Chatbot = () => {
         </div>
       )}
 
-      {/* Toggle Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded-full p-4 shadow-lg transition-all hover:scale-110 flex items-center justify-center w-16 h-16 border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.06)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.38),0_0_0_1px_rgba(34,211,238,0.25)]"
+        className="chatbot-fab flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-2 text-white shadow-lg transition-all hover:scale-110 font-sans"
         title={isOpen ? 'Close assistant' : 'Open assistant'}
         aria-label={isOpen ? 'Close assistant' : 'Open assistant'}
       >
         {isOpen ? (
-          <span className="text-xl leading-none">✕</span>
+          <span className="text-base leading-none">✕</span>
         ) : (
-          <svg viewBox="0 0 24 24" className="w-7 h-7 text-cyan-200" fill="currentColor" aria-hidden="true">
+          <svg viewBox="0 0 24 24" className="h-5 w-5 text-cyan-200" fill="currentColor" aria-hidden="true">
             <path d="M12 2a1 1 0 0 1 1 1v1.06A7.002 7.002 0 0 1 19 11v5a4 4 0 0 1-4 4h-1v1a1 1 0 1 1-2 0v-1h-2v1a1 1 0 1 1-2 0v-1H7a4 4 0 0 1-4-4v-5a7.002 7.002 0 0 1 6-6.94V3a1 1 0 0 1 1-1h2ZM5 11v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5a5 5 0 0 0-5-5h-2a5 5 0 0 0-5 5Zm4 1a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 9 12Zm6 0a1.25 1.25 0 1 1 0 2.5A1.25 1.25 0 0 1 15 12Z" />
           </svg>
         )}
       </button>
-    </div>
+    </>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(chatUi, document.body);
 };
 
 export default Chatbot;
+

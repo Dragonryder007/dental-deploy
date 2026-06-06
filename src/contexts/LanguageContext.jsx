@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+﻿import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import hi from './locales/hi.js';
 import kn from './locales/kn.js';
 import ar from './locales/ar.js';
@@ -11,13 +11,21 @@ const translations = {
       home: 'Home',
       services: 'Services',
       smileDesigning: 'Smile Designing',
-      alignersBraces: 'Aligners & Braces',
+      invisalignBangalore: 'Invisalign',
+      veneersBangalore: 'Veneers',
+      smileMakeoverBangalore: 'Smile Makeover',
       dentalImplants: 'Dental Implants',
+      dentalImplantsBangalore: 'Dental Implants',
+      fullMouthRehab: 'Full Mouth Rehab',
+      allOn4Implants: 'All-on-4 / All-on-6 Implants',
+      dentalTourism: 'Dental Tourism',
+      alignersBraces: 'Aligners & Braces',
       aiPreview: 'AI Preview',
       results: 'Results',
       assessment: 'Assessment',
       faq: 'FAQ',
       reviews: 'Reviews',
+      blog: 'Blog',
       contact: 'Contact',
       signIn: 'Sign In',
       register: 'Register',
@@ -198,6 +206,20 @@ const translations = {
       bookNowBtn: 'Book Appointment Now',
       viewResultsBtn: 'View More Results'
     },
+    seoService: {
+      bookConsultation: 'Book Free Consultation',
+      whatsapp: 'WhatsApp Us',
+      callNow: 'Call Now',
+      problemLabel: 'The Problem',
+      treatmentLabel: 'Treatment Overview',
+      pricingFactors: 'What affects cost',
+      doctorLabel: 'Your Specialist',
+      faqTitle: 'Frequently Asked Questions',
+      faqSub: 'Common questions about this treatment — answered by our clinical team.',
+      reviewsTitle: 'Patient Reviews',
+      reviewsSub: 'Real experiences from patients who trusted us with their smile.',
+      viewAllReviews: 'View all reviews',
+    },
     smileDesigning: {
       title: "Digital Smile Designing",
       subtitle: "Precision-engineered smile makeovers tailored to your facial features and personality.",
@@ -284,12 +306,45 @@ const translations = {
     },
     aiPreview: {
       title: 'AI Smile Preview',
-      subtitle: 'Upload a photo and see your future smile in seconds using our advanced AI technology.',
+      subtitle: 'Share your details, upload a smile photo, and see an AI-powered preview — our team will follow up with you.',
+      stepDetails: 'Your details',
+      stepPhoto: 'Your photo',
+      stepResults: 'Your preview',
+      formTitle: 'Start your preview',
+      formSub: 'We use your contact details only to follow up about your smile consultation.',
+      fullName: 'Full name',
+      fullNamePlaceholder: 'Your name',
+      email: 'Email',
+      phone: 'Phone',
+      detailsReady: 'Details complete — you can upload your photo below.',
+      completeDetailsFirst: 'Please complete your details above first.',
+      awaitingPhoto: 'Upload your photo on the left to see your AI preview here.',
+      savedSuccess: 'Thank you! Your AI smile preview is ready. Book a free consultation to discuss your options with our team.',
+      tryAnother: 'Start another preview',
+      errorFileSize: 'Image is over 8MB. Please choose a smaller photo.',
       uploadTitle: 'Upload Your Photo',
       uploadSub: 'Ensure your teeth are visible for the best results',
       btnUpload: 'Choose Photo',
       btnProcess: 'Generate Preview',
-      disclaimer: '*This is an AI-generated simulation for visualization purposes only.'
+      before: 'Before',
+      after: 'After (AI Preview)',
+      processing: 'Generating your AI smile preview — this may take 1–2 minutes…',
+      imageAi: 'After image generated with Google Gemini AI.',
+      imageErrorApi:
+        'AI image preview could not be generated. Please try again in a minute.',
+      imageErrorBilling:
+        'Your API key is still on the free plan (image quota = 0). In Google AI Studio open Settings → Billing → enable Pay-as-you-go on the SAME project as this API key, then create a new API key and update .env.',
+      simulationNotice:
+        'The “after” image is an illustrative preview only—not AI-generated dentistry. Your personalized treatment plan from our AI assessment appears below. For a clinical smile design, book a consultation.',
+      imageErrorMissingKey:
+        'Illustrative preview only — AI assessment is temporarily unavailable. Please book a consultation.',
+      imageErrorFreeTier:
+        'Illustrative “after” preview. Personalized AI treatment suggestions are in the assessment below.',
+      imageErrorQuota:
+        'Illustrative “after” preview. AI assessment may be limited right now — try again in a few minutes.',
+      imageErrorModel:
+        'Illustrative “after” preview. See your AI smile assessment below for treatment suggestions.',
+      disclaimer: '*This is an AI-generated simulation for visualization purposes only. Not a medical diagnosis or guaranteed result.'
     },
     results: {
       title: 'Success Stories',
@@ -364,12 +419,21 @@ const translations = {
       servicePlaceholder: 'Service *',
       datePlaceholder: 'Date *',
       timeSlot: 'Time Slot *',
+      loadingAvailability: 'Checking availability for this date…',
+      slotUnavailable: 'This time is already booked',
+      slotPast: 'This time has passed',
       goalsLabel: 'Tell us about your dental goals',
       goalsPlaceholder: 'E.g., I want to straighten my teeth, improve my smile, replace missing teeth, etc.',
       confirmBtn: 'Confirm Appointment',
       processing: 'Processing...',
       benefits: '✓ Free consultation • ✓ Personalized treatment plan • ✓ No obligations',
       services: {
+        invisalign: 'Invisalign',
+        veneers: 'Veneers',
+        smileMakeover: 'Smile Makeover',
+        fullMouthRehab: 'Full Mouth Rehabilitation',
+        allOn4: 'All-on-4 Implants',
+        dentalTourism: 'Dental Tourism',
         smileDesigning: 'Digital Smile Designing',
         aligners: 'Aligners & Braces',
         implants: 'Dental Implants',
@@ -831,6 +895,9 @@ const translations = {
       servicePlaceholder: 'Servicio *',
       datePlaceholder: 'Fecha *',
       timeSlot: 'Horario *',
+      loadingAvailability: 'Comprobando disponibilidad para esta fecha…',
+      slotUnavailable: 'Este horario ya está reservado',
+      slotPast: 'Este horario ya pasó',
       goalsLabel: 'Cuéntanos sobre tus objetivos dentales',
       goalsPlaceholder: 'Ej: quiero enderezar mis dientes, mejorar mi sonrisa, reemplazar dientes faltantes, etc.',
       confirmBtn: 'Confirmar Cita',
@@ -1015,3 +1082,4 @@ export const useLanguage = () => {
 };
 
 export default translations;
+

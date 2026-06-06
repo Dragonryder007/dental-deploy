@@ -1,4 +1,4 @@
-/** Hindi (hi) — same key structure as English `en` in LanguageContext.jsx */
+﻿/** Hindi (hi) — same key structure as English `en` in LanguageContext.jsx */
 export default {
   nav: {
     home: 'होम',
@@ -277,7 +277,22 @@ export default {
   },
   aiPreview: {
     title: 'एआई स्माइल प्रीव्यू',
-    subtitle: 'फोटो अपलोड करें और उन्नत एआई से सेकंडों में अपनी भविष्य की मुस्कान देखें।',
+    subtitle: 'अपना विवरण भरें, फोटो अपलोड करें, और एआई पूर्वावलोकन देखें — हमारी टीम आपसे संपर्क करेगी।',
+    stepDetails: 'आपका विवरण',
+    stepPhoto: 'आपकी फोटो',
+    stepResults: 'पूर्वावलोकन',
+    formTitle: 'पूर्वावलोकन शुरू करें',
+    formSub: 'हम आपके विवरण केवल स्माइल परामर्श फॉलो-अप के लिए उपयोग करते हैं।',
+    fullName: 'पूरा नाम',
+    fullNamePlaceholder: 'आपका नाम',
+    email: 'ईमेल',
+    phone: 'फोन',
+    detailsReady: 'विवरण पूर्ण — नीचे फोटो अपलोड करें।',
+    completeDetailsFirst: 'पहले ऊपर अपना विवरण पूरा करें।',
+    awaitingPhoto: 'पूर्वावलोकन के लिए बाईं ओर फोटो अपलोड करें।',
+    savedSuccess: 'धन्यवाद! आपका एआई स्माइल पूर्वावलोकन तैयार है। मुफ्त परामर्श बुक करके हमारी टीम से चर्चा करें।',
+    tryAnother: 'दूसरा पूर्वावलोकन शुरू करें',
+    errorFileSize: 'फोटो 8MB से बड़ी है। छोटी फोटो चुनें।',
     uploadTitle: 'अपनी फोटो अपलोड करें',
     uploadSub: 'सर्वोत्तम परिणामों के लिए दाँत स्पष्ट दिखें',
     btnUpload: 'फोटो चुनें',
@@ -357,6 +372,9 @@ export default {
     servicePlaceholder: 'सेवा *',
     datePlaceholder: 'तिथि *',
     timeSlot: 'समय स्लॉट *',
+    loadingAvailability: 'इस तारीख के लिए उपलब्धता जाँच की जा रही है…',
+    slotUnavailable: 'यह समय पहले से बुक है',
+    slotPast: 'यह समय गुज़र चुका है',
     goalsLabel: 'अपने दंत लक्ष्य बताएँ',
     goalsPlaceholder: 'जैसे दाँत सीधे करना, मुस्कान सुधारना, गायब दाँत बदलना...',
     confirmBtn: 'अपॉइंटमेंट पुष्ट करें',
@@ -466,3 +484,4 @@ export default {
     }
   }
 };
+

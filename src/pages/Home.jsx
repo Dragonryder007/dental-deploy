@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import SEO from '../components/SEO';
 import Navbar from '../components/Navbar';
 import Doctors from '../components/Doctors';
+import BlogLatestSection from '../components/BlogLatestSection';
+import SmilePlusHomePromo from '../components/SmilePlusHomePromo';
+import CountUp from '../components/CountUp';
+import { gsap } from '../utils/gsap';
 import axios from 'axios';
 import smileImg from '../images/smile design after.png';
 import alignersImg from '../images/braces and aligners after.png';
@@ -18,7 +22,7 @@ import aboutDentalCheckup from '../images/about-dental-checkup.jpg';
 import { useLanguage } from '../contexts/LanguageContext';
 import { GOOGLE_MAPS_DIRECTIONS_URL } from '../constants/contact';
 
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
 
 const Home = () => {
   const { t } = useLanguage();
@@ -38,6 +42,32 @@ const Home = () => {
   const [popupLoading, setPopupLoading] = useState(false);
 
   const location = useLocation();
+  const heroRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Hero entrance animation
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      tl.from('.hero-badge',    { opacity: 0, y: 24, duration: 0.6 }, 0.2)
+        .from('.hero-title',    { opacity: 0, y: 36, duration: 0.8 }, 0.45)
+        .from('.hero-subtitle', { opacity: 0, y: 20, duration: 0.6 }, 0.75)
+        .from('.hero-cta',      { opacity: 0, y: 20, duration: 0.6 }, 0.95)
+        .from('.hero-stats > *',{ opacity: 0, y: 20, duration: 0.5, stagger: 0.1 }, 1.1);
+
+      // Parallax — hero bg image drifts at half scroll speed
+      gsap.to('.hero-bg-img', {
+        y: '25%',
+        ease: 'none',
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 0.6,
+        },
+      });
+    }, heroRef);
+    return () => ctx.revert();
+  }, []);
 
   const fetchOurWorkGallery = async () => {
     try {
@@ -177,51 +207,57 @@ const Home = () => {
   const marqueeItems = [...allOurWork, ...allOurWork];
 
   return (
-    <div className="pt-20 md:pt-24 lg:pt-28">
+    <div>
       <SEO 
         title="World-Class Dentistry in Bengaluru"
         description="V Dental and Implant Center offers advanced digital smile designing, clear aligners, and dental implants with international standards. Book your free consultation today."
         keywords="best dentist Bengaluru, digital smile design, clear aligners India, dental implants Bengaluru, V Dental and Implant Center"
       />
       {/* Hero Section */}
-      <header className="relative min-h-[90vh] flex items-center px-6 md:px-20 overflow-hidden bg-[color:var(--deep)]">
-        <img 
-          src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1800&q=85" 
-          alt="Clinic" 
-          className="absolute inset-0 w-full h-full object-cover opacity-45 brightness-75"
+      <header ref={heroRef} className="relative flex min-h-[85vh] sm:min-h-[90vh] w-full items-start justify-start overflow-hidden bg-[color:var(--deep)] px-5 pb-16 pt-24 sm:px-8 sm:pb-20 md:px-20 md:pb-28 md:pt-32 lg:pt-36">
+        <img
+          src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1800&q=85"
+          alt="Clinic"
+          className="hero-bg-img absolute inset-0 w-full h-full object-cover opacity-45 brightness-75"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--deep)]/95 via-[color:var(--deep)]/80 to-[color:var(--deep)]/10" />
         <div className="relative z-10 max-w-3xl text-white">
-          <div className="inline-flex flex-col items-center gap-1 border border-white rounded-full px-5 py-2.5 sm:px-7 sm:py-3 md:px-8 md:py-3.5 mb-8 bg-black/10 backdrop-blur-sm text-center max-w-[min(100%,22rem)] sm:max-w-none">
-            <span className="font-sans text-[#C9A24A] text-xs sm:text-sm font-semibold tracking-wide leading-snug">
+          <div className="hero-badge mb-8 inline-flex w-fit max-w-full flex-col items-center gap-2 rounded-2xl border border-white/40 bg-black/25 px-4 py-3 sm:px-5 sm:py-3.5 text-center shadow-sm backdrop-blur-sm antialiased [text-rendering:optimizeLegibility]">
+            <span className="max-w-full font-sans text-[0.8125rem] sm:text-sm font-medium leading-[1.45] tracking-wide text-[#C9A24A]">
               {t('nav.brandName')}
             </span>
-            <span className="font-sans text-[#C9A24A] text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.18em] leading-snug">
+            <span className="max-w-full font-sans text-[0.625rem] sm:text-[11px] font-semibold uppercase leading-[1.7] tracking-[0.1em] text-[#C9A24A] sm:tracking-[0.13em]">
               {t('nav.brandTagline')}
             </span>
           </div>
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif font-bold leading-[1.1] mb-6">
+          <h1 className="hero-title text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-serif font-bold leading-[1.1] mb-5 md:mb-6">
             {t('home.wherePerfect')} <br />
             <span className="italic text-[#C9A24A]">{t('home.smiles')}</span> {t('home.crafted')}
           </h1>
-          <p className="text-xl text-white/90 mb-12 max-w-2xl leading-relaxed">
+          <p className="hero-subtitle text-base sm:text-xl text-white/90 mb-8 md:mb-12 max-w-2xl leading-relaxed">
             {t('home.heroSubtitle')}
           </p>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/booking" className="bg-[color:var(--teal)] text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-[color:var(--dk)] transition-all shadow-xl shadow-black/30 active:scale-95">
+          <div className="hero-cta flex flex-wrap gap-4">
+            <Link to="/booking" className="btn-glow bg-[color:var(--teal)] text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-[color:var(--dk)] shadow-xl shadow-black/30">
               {t('home.bookConsultation')}
             </Link>
           </div>
 
-          <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-2xl">
+          <div className="hero-stats mt-10 md:mt-14 grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8 max-w-2xl">
             {[
-              { n: '25K+', l: t('home.happyPatients') },
-              { n: '40+', l: t('home.countries') },
-              { n: '43+', l: t('home.excellenceYrs') },
-              { n: '4.9★', l: t('home.rating') }
+              { end: 25, suffix: 'K+', decimals: 0, l: t('home.happyPatients') },
+              { end: 40, suffix: '+',  decimals: 0, l: t('home.countries') },
+              { end: 43, suffix: '+',  decimals: 0, l: t('home.excellenceYrs') },
+              { end: 4.9, suffix: '★', decimals: 1, l: t('home.rating') },
             ].map((s) => (
               <div key={s.l}>
-                <div className="font-serif text-3xl text-[#C9A24A] font-bold leading-none">{s.n}</div>
+                <CountUp
+                  end={s.end}
+                  suffix={s.suffix}
+                  decimals={s.decimals}
+                  duration={2.2}
+                  className="font-serif text-3xl text-[#C9A24A] font-bold leading-none"
+                />
                 <div className="text-xs tracking-wide uppercase text-white/50 mt-2">{s.l}</div>
               </div>
             ))}
@@ -230,7 +266,7 @@ const Home = () => {
       </header>
 
       {/* Trust Bar */}
-      <section className="bg-[color:var(--soft)] border-y border-black/5 px-6 py-6">
+      <section data-reveal className="bg-[color:var(--soft)] border-y border-black/5 px-6 py-6">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-sm text-[color:var(--muted)]">
           {[
             { t: t('home.trust.jci'), d: t('home.trust.jciD') },
@@ -250,7 +286,7 @@ const Home = () => {
       </section>
 
       {/* About Split */}
-      <section id="about" className="grid lg:grid-cols-2">
+      <section id="about" data-reveal className="grid lg:grid-cols-2">
         <div className="relative min-h-[420px] overflow-hidden bg-[color:var(--soft)]">
           <img
             src={aboutDentalCheckup}
@@ -299,7 +335,7 @@ const Home = () => {
             <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 to="/booking"
-                className="bg-[color:var(--teal)] text-white px-8 py-3 rounded-xl font-bold hover:bg-[color:var(--dk)] transition"
+                className="btn-glow bg-[color:var(--teal)] text-white px-8 py-3 rounded-xl font-bold hover:bg-[color:var(--dk)]"
               >
                 {t('home.scheduleVisit')} →
               </Link>
@@ -314,47 +350,49 @@ const Home = () => {
         </div>
       </section>
 
+      <SmilePlusHomePromo />
+
       {/* Signature Treatments */}
-      <section className="py-32 px-6 bg-white relative overflow-hidden bg-dot-pattern">
+      <section className="py-14 sm:py-20 md:py-28 lg:py-32 px-5 sm:px-6 bg-white relative overflow-hidden bg-dot-pattern">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[color:var(--bg)] to-transparent" />
-        
-        <div className="max-w-7xl mx-auto text-center mb-24 relative z-10">
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-[color:var(--soft)] border border-[color:var(--teal)]/10 text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-6">
+
+        <div className="max-w-7xl mx-auto text-center mb-12 sm:mb-16 lg:mb-24 relative z-10">
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-[color:var(--soft)] border border-[color:var(--teal)]/10 text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-5 sm:mb-6">
             <span className="w-2 h-2 rounded-full bg-[color:var(--teal)] animate-pulse" />
             {t('home.signatureTreatments')}
           </div>
-          <h2 className="text-5xl md:text-6xl font-serif font-bold text-[color:var(--dk)] mb-6 leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[color:var(--dk)] mb-4 sm:mb-6 leading-tight">
             {t('home.crafted')} {t('home.wherePerfect')} <span className="italic text-gradient">{t('home.perfectSmile')}</span>
           </h2>
-          <p className="text-[color:var(--muted)] max-w-2xl mx-auto text-lg leading-relaxed font-medium">
+          <p className="text-[color:var(--muted)] max-w-2xl mx-auto text-base sm:text-lg leading-relaxed font-medium">
             {t('home.heroSubtitle')}
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-7xl mx-auto relative z-10">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-8 lg:gap-12 max-w-7xl mx-auto relative z-10">
           {[
-            { 
-              title: t('nav.smileDesigning'), 
-              path: "/smile-designing", 
-              icon: "https://parthadental.com/wp-content/uploads/2022/09/cosmetic-dentistry-750x750.jpg", 
+            {
+              title: t('nav.smileDesigning'),
+              path: "/smile-designing",
+              icon: "https://parthadental.com/wp-content/uploads/2022/09/cosmetic-dentistry-750x750.jpg",
               isImage: true,
               desc: t('home.service1Desc'),
               accent: "from-amber-50 to-orange-50",
               num: "01"
             },
-            { 
-              title: t('nav.alignersBraces'), 
-              path: "/aligners-braces", 
-              icon: "https://dentistry.uic.edu/wp-content/uploads/sites/741/2020/10/iStock-501427146-1090x595.jpg", 
+            {
+              title: t('nav.alignersBraces'),
+              path: "/aligners-braces",
+              icon: "https://dentistry.uic.edu/wp-content/uploads/sites/741/2020/10/iStock-501427146-1090x595.jpg",
               isImage: true,
               desc: t('home.service2Desc'),
               accent: "from-blue-50 to-indigo-50",
               num: "02"
             },
-            { 
-              title: t('nav.dentalImplants'), 
-              path: "/dental-implants", 
-              icon: "https://www.sanmarcosdental.com/blog/wp-content/uploads/implant-diagram.jpeg", 
+            {
+              title: t('nav.dentalImplants'),
+              path: "/dental-implants",
+              icon: "https://www.sanmarcosdental.com/blog/wp-content/uploads/implant-diagram.jpeg",
               isImage: true,
               desc: t('home.service3Desc'),
               accent: "from-emerald-50 to-teal-50",
@@ -364,27 +402,29 @@ const Home = () => {
             <Link
               key={i}
               to={service.path}
-              className="group relative p-10 bg-white rounded-[3rem] border border-black/5 hover:border-[color:var(--teal)]/20 premium-shadow premium-shadow-hover hover-lift transition-all duration-500 no-underline text-center overflow-hidden flex flex-col items-center"
+              data-reveal
+              data-delay={String(i + 1)}
+              className="group relative p-6 sm:p-8 md:p-10 bg-white rounded-3xl md:rounded-[3rem] border border-black/5 hover:border-[color:var(--teal)]/20 premium-shadow premium-shadow-hover hover-lift transition-all duration-500 no-underline text-center overflow-hidden flex flex-col items-center"
             >
               {/* Decorative Number */}
-              <div className="absolute top-8 right-10 text-6xl font-serif font-bold text-black/10 group-hover:text-[color:var(--teal)]/20 transition-colors">
+              <div className="absolute top-5 right-6 md:top-8 md:right-10 text-5xl md:text-6xl font-serif font-bold text-black/10 group-hover:text-[color:var(--teal)]/20 transition-colors">
                 {service.num}
               </div>
 
               {/* Image Icon Wrapper */}
-              <div className="w-40 h-40 rounded-[3.5rem] shadow-lg shadow-black/5 border border-black/10 flex items-center justify-center overflow-hidden mb-10 group-hover:scale-110 transition-all duration-500 bg-white mx-auto">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-[2.5rem] md:rounded-[3.5rem] shadow-lg shadow-black/5 border border-black/10 flex items-center justify-center overflow-hidden mb-6 md:mb-10 group-hover:scale-110 transition-all duration-500 bg-white mx-auto">
                 <img src={service.icon} alt={service.title} className="w-full h-full object-cover" />
               </div>
 
               <div className="relative z-10 flex flex-col flex-grow items-center">
-                <h3 className="text-3xl font-serif font-bold text-[color:var(--dk)] mb-4">{service.title}</h3>
-                <p className="text-[color:var(--muted)] mb-10 leading-relaxed font-medium min-h-[4.5rem]">
+                <h3 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-[color:var(--dk)] mb-3 md:mb-4">{service.title}</h3>
+                <p className="text-[color:var(--muted)] mb-6 md:mb-10 leading-relaxed font-medium text-sm sm:text-base">
                   {service.desc}
                 </p>
-                
-                <div className="mt-auto pt-6 border-t border-black/5 flex items-center justify-center gap-4 w-full">
-                  <span className="text-[color:var(--teal)] font-bold flex items-center gap-2 text-lg">
-                    {t('home.discoverMore')} 
+
+                <div className="mt-auto pt-4 md:pt-6 border-t border-black/5 flex items-center justify-center gap-4 w-full">
+                  <span className="text-[color:var(--teal)] font-bold flex items-center gap-2 text-base md:text-lg">
+                    {t('home.discoverMore')}
                     <span className="group-hover:translate-x-2 transition-transform duration-300">→</span>
                   </span>
                 </div>
@@ -398,17 +438,17 @@ const Home = () => {
       </section>
 
       {/* Our Work Section */}
-      <section id="our-work" className="py-32 px-6 bg-[color:var(--soft)] overflow-hidden">
+      <section id="our-work" data-reveal className="py-14 sm:py-20 md:py-28 lg:py-32 px-5 sm:px-6 bg-[color:var(--soft)] overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-black/5 shadow-sm text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-6">
+          <div className="text-center mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-3 px-4 sm:px-6 py-2 rounded-full bg-white border border-black/5 shadow-sm text-[color:var(--teal)] text-xs font-bold uppercase tracking-[0.2em] mb-5 sm:mb-6">
               <span className="w-3 h-3 rounded-full bg-[color:var(--teal)] shadow-[0_0_8px_rgba(0,102,102,0.4)]" />
               {t('nav.ourWork')}
             </div>
-            <h2 className="text-5xl md:text-6xl font-serif font-bold text-[color:var(--dk)] mb-6">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-[color:var(--dk)] mb-4 sm:mb-6">
               {t('home.witnessThe')}<span className="italic text-[color:var(--teal)]">{t('home.magic')}</span>{t('home.ofOurWorks')}
             </h2>
-            <p className="text-[color:var(--muted)] max-w-2xl mx-auto text-lg leading-relaxed">
+            <p className="text-[color:var(--muted)] max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
               {t('home.realResults')}
             </p>
           </div>
@@ -439,14 +479,15 @@ const Home = () => {
       </section>
 
       {/* New Doctors Team Section */}
+      <BlogLatestSection />
       <Doctors />
 
       {/* Dental Tourism */}
-      <section className="py-24 px-6 bg-[color:var(--soft)]">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-start">
+      <section data-reveal className="py-12 sm:py-16 md:py-24 px-5 sm:px-6 bg-[color:var(--soft)]">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
           <div>
             <div className="text-xs font-bold tracking-[0.3em] uppercase text-[color:var(--teal)] mb-4">{t('home.tourism.title')}</div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-[color:var(--dk)] leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif font-bold text-[color:var(--dk)] leading-tight">
               <span dangerouslySetInnerHTML={{ __html: t('home.tourism.subtitle').replace('{better}', `<span className="italic text-[color:var(--teal)]">${t('home.tourism.better')}</span>`) }} />
             </h2>
             <p className="mt-6 text-[color:var(--muted)] leading-relaxed">
@@ -489,8 +530,8 @@ const Home = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/60" />
             </div>
-            <div className="p-10">
-              <div className="font-serif text-3xl font-bold">{t('home.tourism.whyTitle')}</div>
+            <div className="p-6 sm:p-8 md:p-10">
+              <div className="font-serif text-2xl sm:text-3xl font-bold">{t('home.tourism.whyTitle')}</div>
               <p className="text-white/60 mt-3 leading-relaxed">
                 {t('home.tourism.whyDesc')}
               </p>
@@ -521,11 +562,11 @@ const Home = () => {
       </section>
 
       {/* Contact CTA */}
-      <section id="contact" className="py-24 px-6 bg-gradient-to-br from-[color:var(--deep)] to-[color:var(--dk)] text-white">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-start">
+      <section id="contact" data-reveal className="py-12 sm:py-16 md:py-24 px-5 sm:px-6 bg-gradient-to-br from-[color:var(--deep)] to-[color:var(--dk)] text-white">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
           <div>
             <div className="text-xs font-bold tracking-[0.3em] uppercase text-[#C9A24A] mb-4">{t('home.contact.title')}</div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-serif font-bold leading-tight">
               <span dangerouslySetInnerHTML={{ __html: t('home.contact.subtitle').replace('{free}', `<span className="italic text-[color:var(--teal)]">${t('home.contact.free')}</span>`) }} />
             </h2>
             <p className="mt-6 text-white/65 leading-relaxed max-w-xl">
@@ -569,7 +610,7 @@ const Home = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-10 text-[color:var(--txt)] border border-white/20 shadow-2xl shadow-black/20">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-10 text-[color:var(--txt)] border border-white/20 shadow-2xl shadow-black/20">
             {submitted ? (
               <div className="text-center py-10">
                 <div className="text-5xl mb-4">🚀</div>
@@ -646,7 +687,7 @@ const Home = () => {
                     <button 
                       type="submit" 
                       disabled={loading}
-                      className="w-full bg-[color:var(--teal)] text-white py-4 rounded-xl font-bold text-lg hover:bg-[color:var(--dk)] transition-colors disabled:opacity-50"
+                      className="btn-glow w-full bg-[color:var(--teal)] text-white py-4 rounded-xl font-bold text-lg hover:bg-[color:var(--dk)] disabled:opacity-50"
                     >
                       {loading ? t('home.contact.btnSending') : t('home.contact.btnSend') + ' →'}
                     </button>
@@ -664,69 +705,9 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Visitor Lead Popup */}
-      {showPopup && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
-            <button 
-              onClick={() => setShowPopup(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-
-            {!popupSubmitted ? (
-              <>
-                <div className="text-[color:var(--teal)] font-bold tracking-[0.2em] uppercase text-xs mb-3">Limited Time Offer</div>
-                <h3 className="text-2xl font-serif font-bold text-[color:var(--dk)] mb-2">Get a Free Consultation</h3>
-                <p className="text-[color:var(--muted)] mb-6">Leave your details and our experts will call you back shortly to discuss your dental needs.</p>
-                
-                <form onSubmit={handlePopupSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wide text-[color:var(--muted)] mb-2">Full Name</label>
-                    <input 
-                      type="text"
-                      required
-                      value={popupData.name}
-                      onChange={(e) => setPopupData({ ...popupData, name: e.target.value })}
-                      className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]"
-                      placeholder="Enter your name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wide text-[color:var(--muted)] mb-2">Phone Number</label>
-                    <input 
-                      type="tel"
-                      required
-                      value={popupData.phone}
-                      onChange={(e) => setPopupData({ ...popupData, phone: e.target.value })}
-                      className="w-full bg-[color:var(--bg)] border border-black/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[color:var(--teal)]"
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                  <button 
-                    type="submit"
-                    disabled={popupLoading}
-                    className="w-full bg-[color:var(--teal)] text-white py-4 rounded-xl font-bold hover:bg-[color:var(--dk)] transition-colors disabled:opacity-50"
-                  >
-                    {popupLoading ? 'Submitting...' : 'Call Me Back'}
-                  </button>
-                </form>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <h3 className="text-2xl font-serif font-bold text-[color:var(--dk)] mb-2">Thank You!</h3>
-                <p className="text-[color:var(--muted)]">We have received your request and will contact you shortly.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default Home;
+

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const SEOHead = ({ 
   title = 'V Dental and Implant Center - Premium Dental Services',
@@ -94,3 +94,4 @@ const SEOHead = ({
 };
 
 export default SEOHead;
+

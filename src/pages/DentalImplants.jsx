@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ServicePage from '../components/ServicePage';
 import { useLanguage } from '../contexts/LanguageContext';
 import implantsBefore from '../images/dental implant before.png';
@@ -48,3 +48,4 @@ const DentalImplants = () => {
 };
 
 export default DentalImplants;
+

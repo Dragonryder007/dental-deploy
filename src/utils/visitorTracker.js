@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 const VISITOR_ID_KEY = 'vdental_visitor_id';
 const SESSION_PINGED_KEY = 'vdental_visit_pinged';
@@ -36,7 +36,7 @@ export async function recordVisit() {
   }
 
   const sessionId = getOrCreateVisitorId();
-  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
 
   const payload = {
     path: window.location.pathname,
@@ -60,3 +60,4 @@ export async function recordVisit() {
     console.error('[VisitorTracker] Visit tracking failed:', err?.response?.data || err?.message || err);
   }
 }
+

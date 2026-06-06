@@ -1,17 +1,27 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import SEO from '../components/SEO';
 
+/** Match server normalizeAppointmentSlot for time comparisons */
+function normTimeLabel(t) {
+  return String(t || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 const BookingPage = () => {
   const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const initialService = searchParams.get('service') || 'smile-designing';
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
     date: '',
     time: '',
-    service: 'smile-designing',
+    service: initialService,
     issue: ''
   });
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -19,6 +29,8 @@ const BookingPage = () => {
   const [loading, setLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
   const [bookingError, setBookingError] = useState(null);
+  const [bookedTimesForDate, setBookedTimesForDate] = useState([]);
+  const [bookedSlotsLoading, setBookedSlotsLoading] = useState(false);
 
   // Review State
   const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
@@ -29,8 +41,54 @@ const BookingPage = () => {
     fetchAvailableSlots();
   }, []);
 
+  const apiBase = useMemo(
+    () => (window.location.hostname === 'localhost' ? 'http://localhost:6000' : ''),
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const date = formData.date;
+
+    if (!date) {
+      setBookedTimesForDate([]);
+      setBookedSlotsLoading(false);
+      return undefined;
+    }
+
+    setBookedSlotsLoading(true);
+    setBookedTimesForDate([]);
+
+    axios
+      .get(`${apiBase}/api/booked-times`, { params: { date } })
+      .then((response) => {
+        if (cancelled) return;
+        const booked = response.data.bookedTimes || [];
+        const taken = new Set(booked.map(normTimeLabel));
+        setBookedTimesForDate(booked);
+        setFormData((prev) => {
+          if (prev.time && taken.has(normTimeLabel(prev.time))) {
+            return { ...prev, time: '' };
+          }
+          return prev;
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setBookedTimesForDate([]);
+      })
+      .finally(() => {
+        if (!cancelled) setBookedSlotsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.date, apiBase]);
+
+  const bookedTimeSet = useMemo(() => new Set(bookedTimesForDate.map(normTimeLabel)), [bookedTimesForDate]);
+
   const fetchAvailableSlots = async () => {
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
     try {
       const response = await axios.get(`${API_BASE}/api/available-slots`);
       setAvailableSlots(response.data.slots);
@@ -47,7 +105,7 @@ const BookingPage = () => {
     // Get current local date in YYYY-MM-DD format
     const todayStr = now.toLocaleDateString('en-CA');
 
-    // If selected date is in the future, all slots are enabled
+    // If selected date is in the future, only past-time logic does not apply
     if (selectedDate > todayStr) return false;
     // If selected date is in the past, disable all (safety check)
     if (selectedDate < todayStr) return true;
@@ -82,7 +140,7 @@ const BookingPage = () => {
     setLoading(true);
     setBookingError(null);
 
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
     try {
       const localResponse = await axios.post(`${API_BASE}/api/appointments`, formData);
       setEmailStatus(localResponse?.data?.emailStatus || null);
@@ -92,8 +150,21 @@ const BookingPage = () => {
       }
     } catch (error) {
       if (error.response && error.response.status === 409) {
-        // Specifically handle the "Slot Taken" scenario
         setBookingError(error.response.data.error || 'This slot was just taken by another user. Please select a different time.');
+        if (formData.date) {
+          try {
+            const r = await axios.get(`${API_BASE}/api/booked-times`, { params: { date: formData.date } });
+            const booked = r.data.bookedTimes || [];
+            setBookedTimesForDate(booked);
+            setFormData((prev) =>
+              prev.time && new Set(booked.map(normTimeLabel)).has(normTimeLabel(prev.time))
+                ? { ...prev, time: '' }
+                : prev
+            );
+          } catch {
+            /* ignore */
+          }
+        }
       } else {
         console.error('Booking error:', error);
         setBookingError('Something went wrong while booking. Please check your connection and try again.');
@@ -107,7 +178,7 @@ const BookingPage = () => {
     e.preventDefault();
     if (reviewData.rating === 0) return;
     setReviewLoading(true);
-    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+    const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
     try {
       await axios.post(`${API_BASE}/api/reviews`, {
         name: formData.name,
@@ -323,9 +394,15 @@ const BookingPage = () => {
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-[color:var(--teal)]"
                   >
+                    <option value="invisalign">{t('booking.services.invisalign')}</option>
+                    <option value="veneers">{t('booking.services.veneers')}</option>
+                    <option value="smile-makeover">{t('booking.services.smileMakeover')}</option>
+                    <option value="full-mouth-rehab">{t('booking.services.fullMouthRehab')}</option>
+                    <option value="all-on-4">{t('booking.services.allOn4')}</option>
+                    <option value="dental-tourism">{t('booking.services.dentalTourism')}</option>
+                    <option value="implants">{t('booking.services.implants')}</option>
                     <option value="smile-designing">{t('booking.services.smileDesigning')}</option>
                     <option value="aligners">{t('booking.services.aligners')}</option>
-                    <option value="implants">{t('booking.services.implants')}</option>
                     <option value="consultation">{t('booking.services.consultation')}</option>
                   </select>
                 </div>
@@ -345,21 +422,39 @@ const BookingPage = () => {
 
               <div className="mb-4">
                 <label className="block text-[color:var(--dk)] font-bold mb-3">{t('booking.timeSlot')}</label>
+                {formData.date && bookedSlotsLoading ? (
+                  <p className="text-sm text-[color:var(--muted)] mb-3">{t('booking.loadingAvailability')}</p>
+                ) : null}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
                   {availableSlots.map((slot) => {
-                    const disabled = isSlotDisabled(slot);
+                    const isBooked =
+                      Boolean(formData.date) && bookedTimeSet.has(normTimeLabel(slot));
+                    const disablePastOrPassed = isSlotDisabled(slot);
+                    const disabled =
+                      Boolean(formData.date && bookedSlotsLoading) || disablePastOrPassed || isBooked;
                     return (
                       <button
                         key={slot}
                         type="button"
                         disabled={disabled}
-                        onClick={() => setFormData(prev => ({ ...prev, time: slot }))}
+                        title={
+                          isBooked
+                            ? t('booking.slotUnavailable')
+                            : disablePastOrPassed && formData.date
+                              ? t('booking.slotPast')
+                              : undefined
+                        }
+                        onClick={() =>
+                          disabled ? undefined : setFormData((prev) => ({ ...prev, time: slot }))
+                        }
                         className={`py-2 px-3 rounded-lg font-semibold text-sm transition ${
                           formData.time === slot
                             ? 'bg-[color:var(--teal)] text-white'
                             : disabled
-                            ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
-                            : 'bg-white border border-gray-300 text-gray-700 hover:border-[color:var(--teal)]'
+                              ? `bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60${
+                                  isBooked ? ' line-through decoration-gray-400' : ''
+                                }`
+                              : 'bg-white border border-gray-300 text-gray-700 hover:border-[color:var(--teal)]'
                         }`}
                       >
                         {slot}
@@ -409,3 +504,4 @@ const BookingPage = () => {
 };
 
 export default BookingPage;
+

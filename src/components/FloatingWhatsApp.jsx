@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 function FloatingWhatsApp() {
   const phoneNumber = '919037151894';
@@ -10,7 +10,7 @@ function FloatingWhatsApp() {
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-24 right-6 bg-green-500 text-white rounded-full p-4 shadow-lg hover:bg-green-600 transition-all hover:scale-110 z-40"
+      className="fixed bottom-24 right-3 z-30 rounded-full bg-green-500 p-4 text-white shadow-lg transition-all hover:scale-110 hover:bg-green-600"
       title="Chat on WhatsApp"
       aria-label="Chat on WhatsApp"
     >
@@ -27,3 +27,4 @@ function FloatingWhatsApp() {
 }
 
 export default FloatingWhatsApp;
+

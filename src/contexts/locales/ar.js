@@ -1,4 +1,4 @@
-/** Arabic (ar) — same key structure as English `en`; use RTL layout via document.dir */
+﻿/** Arabic (ar) — same key structure as English `en`; use RTL layout via document.dir */
 export default {
   nav: {
     home: 'الرئيسية',
@@ -357,6 +357,9 @@ export default {
     servicePlaceholder: 'الخدمة *',
     datePlaceholder: 'التاريخ *',
     timeSlot: 'الفترة الزمنية *',
+    loadingAvailability: 'جارٍ التحقق من الأوقات المتاحة لهذا التاريخ…',
+    slotUnavailable: 'هذا الوقت محجوز مسبقاً',
+    slotPast: 'انتهى هذا الوقت',
     goalsLabel: 'أخبرنا عن أهدافك لأسنانك',
     goalsPlaceholder: 'مثلاً: تقويم، تحسين الابتسامة، استبدال أسنان مفقودة...',
     confirmBtn: 'تأكيد الموعد',
@@ -466,3 +469,4 @@ export default {
     }
   }
 };
+

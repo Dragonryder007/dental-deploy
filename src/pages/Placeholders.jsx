@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const Placeholder = ({ name }) => (
   <div className="pt-32 px-6 min-h-screen text-center">
@@ -12,3 +12,4 @@ export const Register = () => <Placeholder name="Register" />;
 export const Booking = () => <Placeholder name="Booking" />;
 export const Results = () => <Placeholder name="Results" />;
 export const Assessment = () => <Placeholder name="Assessment" />;
+

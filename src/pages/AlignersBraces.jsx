@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ServicePage from '../components/ServicePage';
 import { useLanguage } from '../contexts/LanguageContext';
 import alignersBefore from '../images/braces and aligners before.png';
@@ -30,7 +30,21 @@ const AlignersBraces = () => {
     ],
     journeyTitle: t('alignersBraces.customJourneyTitle'),
     outstationText: t('alignersBraces.outstationText'),
-    afterImg: "https://dentistry.uic.edu/wp-content/uploads/sites/741/2020/10/iStock-501427146-1090x595.jpg"
+    afterImg: "https://dentistry.uic.edu/wp-content/uploads/sites/741/2020/10/iStock-501427146-1090x595.jpg",
+    doctors: [
+      {
+        name: 'Dr. Sonika',
+        title: 'Orthodontist · Invisalign & Clear Aligners Specialist',
+        experience: '12+ Years | MDS Orthodontics',
+        tag: 'Orthodontic Specialist',
+      },
+      {
+        name: 'Dr. Sarah Shaik',
+        title: 'Orthodontist · Aligner & Braces Specialist',
+        experience: '5+ Years | MDS Orthodontics, VS Dental College',
+        tag: '300+ Aligner Cases',
+      },
+    ]
   };
 
   return (
@@ -46,3 +60,4 @@ const AlignersBraces = () => {
 };
 
 export default AlignersBraces;
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const ImplantsFAQ = () => {
@@ -339,3 +339,4 @@ const ImplantsFAQ = () => {
 };
 
 export default ImplantsFAQ;
+

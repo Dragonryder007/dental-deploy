@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { dentalImplantsFaqCategoriesByLang } from '../data/dentalImplantsFaqCategories';
 
@@ -64,7 +64,7 @@ const DentalImplantsFAQ = () => {
                         <span
                           className={`text-2xl text-[color:var(--teal)] shrink-0 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
                         >
-                          ⌄
+                          âŒ„
                         </span>
                       </button>
                       <div
@@ -85,3 +85,4 @@ const DentalImplantsFAQ = () => {
 };
 
 export default DentalImplantsFAQ;
+

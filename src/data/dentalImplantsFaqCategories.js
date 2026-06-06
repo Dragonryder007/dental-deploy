@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Extended Dental Implants FAQ.
  *
  * - `en` is the source of truth.
@@ -763,3 +763,4 @@ export const dentalImplantsFaqCategoriesByLang = {
     ...dentalImplantsFaqCategoriesEn.slice(1)
   ]
 };
+

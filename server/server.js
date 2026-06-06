@@ -10,10 +10,11 @@ import fs from 'fs';
 import path from 'path';
 import mysql from 'mysql2/promise';
 import { fileURLToPath } from 'url';
-import { initDb, dbRun, dbAll, dbGet } from '../database/db.js';
+import { initDb, dbRun, dbAll, dbGet, normalizeAppointmentSlot } from '../database/db.js';
+import { SEED_BLOG_POSTS } from './seedBlogPosts.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', true);
 app.use(cors());
@@ -184,15 +185,46 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const uploadsDir = path.join(__dirname, 'uploads');
+const aiPreviewUploadsDir = path.join(uploadsDir, 'ai-preview');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(aiPreviewUploadsDir)) fs.mkdirSync(aiPreviewUploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
+function writeBase64ImageToUploads(base64, mimeType, prefix) {
+  const ext =
+    mimeType?.includes('png') ? 'png' : mimeType?.includes('webp') ? 'webp' : 'jpg';
+  const buf = Buffer.from(base64, 'base64');
+  const filename = `${prefix}_${Date.now()}_${Math.round(Math.random() * 1e9)}.${ext}`;
+  const filePath = path.join(aiPreviewUploadsDir, filename);
+  fs.writeFileSync(filePath, buf);
+  return `/uploads/ai-preview/${filename}`;
+}
+
+function writeDataUrlImageToUploads(dataUrl, prefix) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+  const m = dataUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  if (!m) return null;
+  return writeBase64ImageToUploads(m[2], m[1], prefix);
+}
+
+function deleteAiPreviewFiles(row) {
+  if (!row) return;
+  for (const url of [row.beforeImageUrl, row.afterImageUrl]) {
+    if (!url || typeof url !== 'string') continue;
+    const base = path.basename(url);
+    const filePath = path.join(aiPreviewUploadsDir, base);
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 // ----------------------------
-// Database (MySQL)
+// Database (MySQL) — must be ready before accepting traffic
 // ----------------------------
-initDb().catch(err => {
-  console.error('Failed to initialize database:', err);
-});
+let dbReady = false;
 
 // Gallery schema is handled in initial creation for MySQL
 
@@ -244,11 +276,69 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+/** Run multer only for multipart blog uploads; JSON body works for text-only edits */
+function blogUploadOptional(req, res, next) {
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('multipart/form-data')) {
+    return upload.single('featuredImage')(req, res, next);
+  }
+  next();
+}
+
 // ============================================
 // STEP 3: AI SMILE PREVIEW API (Gemini-powered)
 // ============================================
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+const GEMINI_IMAGE_MODEL_FALLBACKS = (process.env.GEMINI_IMAGE_MODEL_FALLBACKS || 'gemini-3.1-flash-image-preview,gemini-3-pro-image-preview')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
+// Set GEMINI_IMAGE_PREVIEW=false to disable AI before/after image generation.
+const GEMINI_IMAGE_PREVIEW = String(process.env.GEMINI_IMAGE_PREVIEW ?? 'true').toLowerCase() !== 'false';
+
+function parseGeminiFailure(status, errText) {
+  const reason = status === 429 ? 'quota_exceeded' : `gemini_${status}`;
+  let detail = '';
+  try {
+    const parsed = JSON.parse(errText);
+    detail = parsed?.error?.message || '';
+  } catch {
+    detail = errText.slice(0, 400);
+  }
+  if (status === 429) {
+    // Still on free tier — billing not linked to this API key's project (limit: 0).
+    if (/free_tier/i.test(detail) && /limit:\s*0\b/i.test(detail)) {
+      return { reason: 'billing_required', detail };
+    }
+    if (/limit:\s*0\b/i.test(detail) && /image|preview-image/i.test(detail)) {
+      return { reason: 'billing_required', detail };
+    }
+    if (/limit:\s*0\b/i.test(detail)) {
+      return { reason: 'billing_required', detail };
+    }
+    if (/free_tier_input_token_count/i.test(detail)) {
+      return { reason: 'quota_input_tokens', detail };
+    }
+    if (/free_tier/i.test(detail)) {
+      return { reason: 'quota_free_tier', detail };
+    }
+    return { reason: 'quota_exceeded', detail };
+  }
+  return { reason, detail };
+}
+
+const SMILE_IMAGE_PROMPT = `You are a cosmetic dental smile preview tool for a dental clinic website.
+The user uploaded a photo of their face with their teeth visible.
+
+Create ONE photorealistic "after treatment" version of THIS SAME photo:
+- Keep the exact same person, face shape, skin, eyes, nose, hair, pose, and background
+- Only improve the visible smile: whiter, cleaner teeth; subtly straighter if crooked; natural gums
+- Result must look like a realistic cosmetic dentistry simulation, not a cartoon
+- Do not add text, watermarks, or borders
+
+This is illustrative marketing only, not a medical outcome guarantee.`;
 
 const SMILE_ANALYSIS_PROMPT = `You are an AI cosmetic-dental assistant for a smile-preview tool at V Dental and Implant Center.
 Look at the visible teeth/smile in the photo. Be friendly, accurate, and concise.
@@ -365,8 +455,9 @@ async function analyzeSmileWithGemini({ imageBase64, mimeType }) {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
-      console.error('Gemini API error:', response.status, errText.slice(0, 300));
-      return { ok: false, reason: `gemini_${response.status}` };
+      const failure = parseGeminiFailure(response.status, errText);
+      console.error('Gemini analysis error:', response.status, failure.detail || errText.slice(0, 300));
+      return { ok: false, reason: failure.reason };
     }
 
     const json = await response.json();
@@ -379,6 +470,90 @@ async function analyzeSmileWithGemini({ imageBase64, mimeType }) {
     console.error('Gemini call failed:', error?.message || error);
     return { ok: false, reason: 'request_failed' };
   }
+}
+
+function extractGeneratedImageDataUrl(json) {
+  const parts = json?.candidates?.[0]?.content?.parts || [];
+  for (const p of parts) {
+    const inline = p.inlineData || p.inline_data;
+    if (!inline?.data) continue;
+    const mime = inline.mimeType || inline.mime_type || 'image/png';
+    return `data:${mime};base64,${inline.data}`;
+  }
+  return null;
+}
+
+async function callGeminiImageModel(model, { imageBase64, mimeType }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } },
+          { text: SMILE_IMAGE_PROMPT }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.35,
+      responseModalities: ['TEXT', 'IMAGE']
+    }
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90_000);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: controller.signal
+  });
+  clearTimeout(timer);
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    const failure = parseGeminiFailure(response.status, errText);
+    console.error('Gemini image error:', model, response.status, failure.detail || errText.slice(0, 500));
+    return { ok: false, reason: failure.reason, detail: failure.detail };
+  }
+
+  const json = await response.json();
+  const afterImage = extractGeneratedImageDataUrl(json);
+  if (!afterImage) return { ok: false, reason: 'no_image_in_response' };
+  return { ok: true, afterImage, model };
+}
+
+async function generateSmileAfterImage({ imageBase64, mimeType }) {
+  if (!GEMINI_API_KEY) return { ok: false, reason: 'missing_api_key' };
+  if (!imageBase64) return { ok: false, reason: 'missing_image' };
+
+  const models = [GEMINI_IMAGE_MODEL, ...GEMINI_IMAGE_MODEL_FALLBACKS.filter((m) => m !== GEMINI_IMAGE_MODEL)];
+  let lastReason = 'request_failed';
+  let lastDetail = '';
+
+  for (const model of models) {
+    try {
+      const result = await callGeminiImageModel(model, { imageBase64, mimeType });
+      if (result.ok) {
+        if (model !== GEMINI_IMAGE_MODEL) {
+          console.log(`smile-preview: image OK via fallback model ${model}`);
+        }
+        return { ok: true, afterImage: result.afterImage };
+      }
+      lastReason = result.reason;
+      lastDetail = result.detail || '';
+      if (result.reason !== 'billing_required' && result.reason !== 'quota_exceeded' && !String(result.reason).includes('429')) {
+        continue;
+      }
+      break;
+    } catch (error) {
+      console.error(`Gemini image failed (${model}):`, error?.message || error);
+      lastReason = 'request_failed';
+    }
+  }
+
+  return { ok: false, reason: lastReason, detail: lastDetail };
 }
 
 function fallbackAnalysis() {
@@ -396,9 +571,153 @@ function fallbackAnalysis() {
   };
 }
 
+// ── AI Blog Generator ─────────────────────────────────────────────────────
+app.post('/api/generate-blog', async (req, res) => {
+  try {
+    const { topic, tone, length } = req.body || {};
+    if (!topic || !topic.trim()) return res.status(400).json({ error: 'Topic is required.' });
+    if (!GEMINI_API_KEY) return res.status(503).json({ error: 'AI is not configured. Add GEMINI_API_KEY to .env.' });
+
+    const wordCount = length === 'short' ? 300 : length === 'long' ? 1000 : 600;
+    const toneDesc =
+      tone === 'friendly'     ? 'friendly, warm, and conversational — like talking to a trusted friend' :
+      tone === 'educational'  ? 'educational and informative — clear explanations, simple language' :
+                                'professional and authoritative — confident, expert tone';
+
+    const prompt = `You are a dental content writer for V Dental & Implant Center, a premium dental clinic in Indiranagar, Bangalore, India.
+
+Write a complete, SEO-optimised blog post about: "${topic.trim()}"
+
+Requirements:
+- Tone: ${toneDesc}
+- Target length: approximately ${wordCount} words
+- Naturally mention "V Dental & Implant Center, Bangalore" once or twice
+- Practical, useful content patients would value
+- Do NOT include the blog title inside the content body
+
+CONTENT FORMAT — use proper HTML tags only:
+- Use <h2> for main section headings
+- Use <h3> for sub-headings inside sections
+- Use <p> for all paragraphs — wrap every paragraph in <p> tags
+- Use <ul><li> for bullet point lists
+- Use <ol><li> for numbered steps
+- Use <strong> for important keywords
+- Do NOT use markdown symbols (no **, no ##, no --)
+- Do NOT include <html>, <head>, <body> tags — content body only
+- Every section must be separated and clearly structured
+
+Return ONLY a valid JSON object with this exact structure (no extra text outside the JSON):
+{
+  "title": "Compelling, SEO-friendly blog title",
+  "excerpt": "1-2 sentence summary of the post (max 155 characters)",
+  "content": "<h2>Section Heading</h2><p>Opening paragraph with context.</p><h3>Sub-heading</h3><p>Detailed content here.</p><ul><li>Point one</li><li>Point two</li></ul>",
+  "metaTitle": "SEO meta title (max 60 characters)",
+  "metaDescription": "SEO meta description (max 155 characters)",
+  "metaKeywords": "keyword1, keyword2, keyword3, keyword4, keyword5"
+}`;
+
+    // Try primary model first, then fallback models if 503/429
+    const blogModels = [
+      GEMINI_MODEL,
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-2.0-flash',
+    ].filter((m, i, arr) => arr.indexOf(m) === i); // dedupe
+
+    const geminiBody = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH',        threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',  threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT',  threshold: 'BLOCK_ONLY_HIGH' }
+      ]
+    };
+
+    let rawText = '';
+    let lastError = 'request_failed';
+    let succeeded = false;
+
+    for (const model of blogModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 40_000);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => '');
+          const failure = parseGeminiFailure(response.status, errText);
+          lastError = failure.reason;
+          console.warn(`generate-blog: model ${model} returned ${response.status} (${failure.reason}), trying next...`);
+          // Retry on 503 (overloaded) or 429 (quota), but not on 400/404 (bad key/model)
+          if (response.status !== 503 && response.status !== 429) break;
+          continue;
+        }
+
+        const json = await response.json();
+        rawText = json?.candidates?.[0]?.content?.parts?.find(p => typeof p.text === 'string')?.text || '';
+        if (rawText) { succeeded = true; console.log(`generate-blog: success via model ${model}`); break; }
+      } catch (fetchErr) {
+        lastError = 'request_failed';
+        console.warn(`generate-blog: model ${model} fetch error:`, fetchErr?.message);
+      }
+    }
+
+    if (!succeeded || !rawText) {
+      return res.status(502).json({ error: `AI is currently busy. Please try again in a few seconds. (${lastError})` });
+    }
+
+    const parsed = safeParseJson(rawText);
+
+    if (!parsed || !parsed.title || !parsed.content) {
+      console.error('generate-blog: bad AI response', rawText.slice(0, 300));
+      return res.status(502).json({ error: 'AI returned an unexpected response. Please try again.' });
+    }
+
+    return res.json({
+      title:           parsed.title           || '',
+      excerpt:         parsed.excerpt          || '',
+      content:         parsed.content          || '',
+      metaTitle:       parsed.metaTitle        || parsed.title || '',
+      metaDescription: parsed.metaDescription  || parsed.excerpt || '',
+      metaKeywords:    parsed.metaKeywords     || '',
+    });
+  } catch (err) {
+    console.error('generate-blog error:', err?.message || err);
+    return res.status(500).json({ error: 'Blog generation failed. Please try again.' });
+  }
+});
+
 app.post('/api/smile-preview', async (req, res) => {
   try {
-    const { image, originalImage, imageBase64: incomingBase64, mimeType: incomingMime } = req.body || {};
+    const {
+      image,
+      originalImage,
+      imageBase64: incomingBase64,
+      mimeType: incomingMime,
+      name,
+      email,
+      phone
+    } = req.body || {};
+
+    const patientName = String(name || '').trim();
+    const patientEmail = String(email || '').trim().toLowerCase();
+    const patientPhone = String(phone || '').trim();
+
+    if (!patientName || !patientEmail || !patientPhone) {
+      return res.status(400).json({ success: false, error: 'Name, email, and phone are required.' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
 
     let imageBase64 = incomingBase64 || null;
     let mimeType = incomingMime || null;
@@ -422,29 +741,106 @@ app.post('/api/smile-preview', async (req, res) => {
     let analysis = null;
     let source = 'fallback';
     let reason = null;
+    let afterImage = null;
+    let imageSource = 'none';
+    let imageReason = null;
 
     if (imageBase64) {
-      const result = await analyzeSmileWithGemini({ imageBase64, mimeType: mimeType || 'image/jpeg' });
-      if (result.ok) {
-        analysis = result.analysis;
+      const mime = mimeType || 'image/jpeg';
+      const kb = Math.round((imageBase64.length * 3) / 4 / 1024);
+      console.log(`smile-preview: image ~${kb}KB, imagePreview=${GEMINI_IMAGE_PREVIEW}`);
+
+      const imagePromise = GEMINI_IMAGE_PREVIEW
+        ? generateSmileAfterImage({ imageBase64, mimeType: mime })
+        : Promise.resolve({ ok: false, reason: 'image_preview_disabled' });
+
+      const [analysisResult, imageResult] = await Promise.all([
+        analyzeSmileWithGemini({ imageBase64, mimeType: mime }),
+        imagePromise
+      ]);
+
+      if (analysisResult.ok) {
+        analysis = analysisResult.analysis;
         source = 'gemini';
       } else {
-        reason = result.reason;
+        reason = analysisResult.reason;
+      }
+
+      if (imageResult.ok) {
+        afterImage = imageResult.afterImage;
+        imageSource = 'gemini';
+      } else {
+        imageReason = imageResult.reason;
       }
     } else {
       reason = 'missing_image';
+      imageReason = 'missing_image';
+      return res.status(400).json({ success: false, error: 'Please upload a smile photo to continue.' });
     }
 
     if (!analysis) analysis = fallbackAnalysis();
+
+    let submissionId = null;
+    let saved = false;
+    if (imageBase64) {
+      try {
+        const mime = mimeType || 'image/jpeg';
+        const beforeImageUrl = writeBase64ImageToUploads(imageBase64, mime, 'before');
+        const afterImageUrl = afterImage ? writeDataUrlImageToUploads(afterImage, 'after') : null;
+        const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        const insert = await dbRun(
+          `INSERT INTO ai_previews (name, email, phone, beforeImageUrl, afterImageUrl, analysisJson, aiSource, status, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            patientName,
+            patientEmail,
+            patientPhone,
+            beforeImageUrl,
+            afterImageUrl,
+            JSON.stringify(analysis),
+            source,
+            'new',
+            createdAt
+          ]
+        );
+        submissionId = insert.lastID;
+        saved = true;
+
+        try {
+          await dbRun(
+            `INSERT INTO leads (name, phone, email, source, service, message, status, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              patientName,
+              patientPhone,
+              patientEmail,
+              'ai-preview',
+              'AI Smile Preview',
+              'Patient submitted AI smile preview with before/after images.',
+              'new',
+              createdAt
+            ]
+          );
+        } catch (leadErr) {
+          console.warn('ai-preview lead insert:', leadErr.message);
+        }
+      } catch (saveErr) {
+        console.error('ai-preview save error:', saveErr.message);
+      }
+    }
 
     return res.json({
       success: true,
       source,
       reason,
+      imageSource,
+      imageReason,
+      saved,
+      submissionId,
       message: source === 'gemini' ? 'Smile analyzed with Gemini AI' : 'Image processed (fallback recommendations)',
-      transformedImage: image || null,
+      afterImage,
+      transformedImage: afterImage || image || null,
       analysis,
-      // Legacy field kept for older clients - flat list of recommendation strings.
       recommendations: analysis.recommendations.map((r) => `${r.treatment}${r.reason ? ` — ${r.reason}` : ''}`)
     });
   } catch (error) {
@@ -506,9 +902,10 @@ const AVAILABLE_SLOTS = [
 ];
 
 app.post('/api/appointments', async (req, res) => {
-  const { name, phone, email, date, time, service, issue } = req.body;
+  const { name, phone, email, service, issue } = req.body;
+  const { date: normDate, time: normTime } = normalizeAppointmentSlot(req.body.date, req.body.time);
 
-  if (!name || !phone || !date || !time) {
+  if (!name || !phone || !normDate || !normTime) {
     return res.status(400).json({ success: false, error: 'Missing required fields' });
   }
 
@@ -519,12 +916,12 @@ app.post('/api/appointments', async (req, res) => {
     const result = await dbRun(
       `INSERT INTO appointments (name, phone, email, date, time, service, issue, status, createdAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, phone, email || null, date, time, service || null, issue || null, 'pending', createdAt]
+      [name, phone, email || null, normDate, normTime, service || null, issue || null, 'pending', createdAt]
     );
     appointmentId = result.lastID;
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      console.warn('Attempted to book an already taken slot:', req.body.date, req.body.time);
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      console.warn('Attempted to book an already taken slot:', normDate, normTime);
       return res.status(409).json({ success: false, error: 'This slot is no longer available. Please choose another time.' });
     }
     console.error('❌ Appointment insert error:', error.message);
@@ -536,8 +933,8 @@ app.post('/api/appointments', async (req, res) => {
     name,
     phone,
     email,
-    date,
-    time,
+    date: normDate,
+    time: normTime,
     service,
     issue,
     status: 'pending',
@@ -598,6 +995,22 @@ app.get('/api/appointments', async (req, res) => {
 
 app.get('/api/available-slots', (req, res) => {
   res.json({ success: true, slots: AVAILABLE_SLOTS });
+});
+
+/** Times already taken for a calendar date (YYYY-MM-DD) — drives booking UI slot disabling */
+app.get('/api/booked-times', async (req, res) => {
+  try {
+    const normDate = normalizeAppointmentSlot(req.query.date || '', '').date;
+    if (!normDate) return res.json({ success: true, bookedTimes: [] });
+
+    const rows = await dbAll(`SELECT \`time\` FROM appointments WHERE \`date\` = ?`, [normDate]);
+    const bookedTimes = rows.map((row) => normalizeAppointmentSlot('', row.time).time).filter(Boolean);
+
+    res.json({ success: true, bookedTimes });
+  } catch (error) {
+    console.error('booked-times fetch error:', error.message);
+    res.status(500).json({ success: false, bookedTimes: [], error: 'Failed to fetch booked times' });
+  }
 });
 
 // ============================================
@@ -847,6 +1260,389 @@ app.delete('/api/admin/reviews/:id', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Review delete error:', error);
     res.status(500).json({ success: false, error: 'Failed to delete review' });
+  }
+});
+
+// ============================================
+// BLOG API
+// ============================================
+
+function slugifyBlogTitle(title) {
+  return String(title || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 200);
+}
+
+function estimateReadTime(html) {
+  const text = String(html || '').replace(/<[^>]+>/g, ' ');
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(3, Math.ceil(words / 200));
+}
+
+function mapBlogRow(row, { includeContent = true } = {}) {
+  if (!row) return null;
+  const post = {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt || '',
+    category: row.category || 'General',
+    author: row.author || 'V Dental and Implant Center',
+    featuredImage: row.featuredImageUrl || null,
+    metaTitle: row.metaTitle || row.title,
+    metaDescription: row.metaDescription || row.excerpt || '',
+    metaKeywords: row.metaKeywords || '',
+    serviceLink: row.serviceLink || '',
+    readTimeMinutes: row.readTimeMinutes || estimateReadTime(row.content),
+    status: row.status || 'draft',
+    createdAt: row.createdAt,
+    publishedAt: row.publishedAt || row.createdAt,
+  };
+  if (includeContent) post.content = row.content || '';
+  return post;
+}
+
+async function ensureUniqueBlogSlug(baseSlug, excludeId = null) {
+  let slug = baseSlug || 'post';
+  let n = 0;
+  for (;;) {
+    const candidate = n === 0 ? slug : `${slug}-${n}`;
+    const existing = await dbAll(`SELECT id FROM blog_posts WHERE slug = ?`, [candidate]);
+    if (!existing.length || (excludeId && existing.length === 1 && existing[0].id == excludeId)) {
+      return candidate;
+    }
+    n += 1;
+  }
+}
+
+async function seedBlogPostsIfEmpty() {
+  try {
+    const rows = await dbAll(`SELECT id FROM blog_posts LIMIT 1`);
+    if (rows.length > 0) return;
+
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    for (const post of SEED_BLOG_POSTS) {
+      await dbRun(
+        `INSERT INTO blog_posts (
+          title, slug, excerpt, content, category, author, featuredImageUrl,
+          metaTitle, metaDescription, metaKeywords, serviceLink, readTimeMinutes,
+          status, createdAt, publishedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          post.title,
+          post.slug,
+          post.excerpt,
+          post.content,
+          post.category,
+          post.author,
+          post.featuredImageUrl || null,
+          post.metaTitle,
+          post.metaDescription,
+          post.metaKeywords,
+          post.serviceLink,
+          post.readTimeMinutes || estimateReadTime(post.content),
+          'published',
+          now,
+          now,
+        ]
+      );
+    }
+    console.log(`✅ Seeded ${SEED_BLOG_POSTS.length} blog posts`);
+  } catch (err) {
+    console.warn('⚠️ Blog seed skipped:', err.message);
+  }
+}
+
+app.get('/api/blog', async (req, res) => {
+  try {
+    const { category, limit } = req.query;
+    let sql = `SELECT id, title, slug, excerpt, content, category, author, featuredImageUrl,
+      metaTitle, metaDescription, metaKeywords, serviceLink, readTimeMinutes, status, createdAt, publishedAt
+      FROM blog_posts WHERE status = 'published'`;
+    const params = [];
+    if (category) {
+      sql += ` AND category = ?`;
+      params.push(category);
+    }
+    sql += ` ORDER BY COALESCE(publishedAt, createdAt) DESC`;
+    if (limit) {
+      sql += ` LIMIT ?`;
+      params.push(Math.min(Number(limit) || 10, 50));
+    }
+    const rows = await dbAll(sql, params);
+    res.json({
+      success: true,
+      posts: rows.map((r) => mapBlogRow(r, { includeContent: false })),
+    });
+  } catch (error) {
+    console.error('Blog list error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch blog posts' });
+  }
+});
+
+app.get('/api/blog/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const rows = await dbAll(
+      `SELECT * FROM blog_posts WHERE slug = ? AND status = 'published' LIMIT 1`,
+      [slug]
+    );
+    const row = rows[0];
+    if (!row) return res.status(404).json({ success: false, error: 'Post not found' });
+
+    const related = await dbAll(
+      `SELECT id, title, slug, excerpt, category, author, featuredImageUrl, readTimeMinutes, createdAt, publishedAt, content, status
+       FROM blog_posts
+       WHERE status = 'published' AND category = ? AND slug != ?
+       ORDER BY COALESCE(publishedAt, createdAt) DESC LIMIT 3`,
+      [row.category, slug]
+    );
+
+    res.json({
+      success: true,
+      post: mapBlogRow(row),
+      related: related.map((r) => mapBlogRow(r, { includeContent: false })),
+    });
+  } catch (error) {
+    console.error('Blog post error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch blog post' });
+  }
+});
+
+app.get('/api/admin/blog', requireAdmin, async (req, res) => {
+  try {
+    const rows = await dbAll(`SELECT * FROM blog_posts ORDER BY createdAt DESC`);
+    res.json({ success: true, posts: rows.map((r) => mapBlogRow(r)) });
+  } catch (error) {
+    console.error('Admin blog fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch blog posts' });
+  }
+});
+
+app.post('/api/admin/blog', requireAdmin, blogUploadOptional, async (req, res) => {
+  try {
+    const {
+      title,
+      slug,
+      excerpt,
+      content,
+      category,
+      author,
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      serviceLink,
+      readTimeMinutes,
+      status,
+    } = req.body || {};
+
+    if (!title?.trim() || !content?.trim()) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ success: false, error: 'Title and content are required' });
+    }
+
+    const baseSlug = slugifyBlogTitle(slug || title);
+    const uniqueSlug = await ensureUniqueBlogSlug(baseSlug);
+    const featuredImageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const postStatus = status === 'published' ? 'published' : 'draft';
+    const publishedAt = postStatus === 'published' ? now : null;
+
+    const { lastID } = await dbRun(
+      `INSERT INTO blog_posts (
+        title, slug, excerpt, content, category, author, featuredImageUrl,
+        metaTitle, metaDescription, metaKeywords, serviceLink, readTimeMinutes,
+        status, createdAt, publishedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title.trim(),
+        uniqueSlug,
+        (excerpt || '').trim(),
+        content,
+        (category || 'General').trim(),
+        (author || 'V Dental and Implant Center').trim(),
+        featuredImageUrl,
+        (metaTitle || title).trim(),
+        (metaDescription || excerpt || '').trim(),
+        (metaKeywords || '').trim(),
+        (serviceLink || '').trim(),
+        Number(readTimeMinutes) || estimateReadTime(content),
+        postStatus,
+        now,
+        publishedAt,
+      ]
+    );
+
+    const row = await dbGet(`SELECT * FROM blog_posts WHERE id = ?`, [lastID]);
+    res.json({ success: true, post: mapBlogRow(row) });
+  } catch (error) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    console.error('Blog create error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create blog post' });
+  }
+});
+
+app.put('/api/admin/blog/:id', requireAdmin, blogUploadOptional, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const existing = await dbGet(`SELECT * FROM blog_posts WHERE id = ?`, [id]);
+    if (!existing) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      return res.status(404).json({ success: false, error: 'Post not found' });
+    }
+
+    const {
+      title,
+      slug,
+      excerpt,
+      content,
+      category,
+      author,
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      serviceLink,
+      readTimeMinutes,
+      status,
+      removeFeaturedImage,
+    } = req.body || {};
+
+    if (!title?.trim() || !content?.trim()) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ success: false, error: 'Title and content are required' });
+    }
+
+    const baseSlug = slugifyBlogTitle(slug || title);
+    const uniqueSlug = await ensureUniqueBlogSlug(baseSlug, id);
+    let featuredImageUrl = existing.featuredImageUrl;
+
+    if (req.file) {
+      if (existing.featuredImageUrl) {
+        const oldPath = path.join(uploadsDir, path.basename(existing.featuredImageUrl));
+        if (fs.existsSync(oldPath)) fs.unlink(oldPath, () => {});
+      }
+      featuredImageUrl = `/uploads/${req.file.filename}`;
+    } else if (removeFeaturedImage === 'true' || removeFeaturedImage === true) {
+      if (existing.featuredImageUrl) {
+        const oldPath = path.join(uploadsDir, path.basename(existing.featuredImageUrl));
+        if (fs.existsSync(oldPath)) fs.unlink(oldPath, () => {});
+      }
+      featuredImageUrl = null;
+    }
+
+    const postStatus = status === 'published' ? 'published' : 'draft';
+    let publishedAt = existing.publishedAt;
+    if (postStatus === 'published' && !publishedAt) {
+      publishedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    await dbRun(
+      `UPDATE blog_posts SET
+        title = ?, slug = ?, excerpt = ?, content = ?, category = ?, author = ?,
+        featuredImageUrl = ?, metaTitle = ?, metaDescription = ?, metaKeywords = ?,
+        serviceLink = ?, readTimeMinutes = ?, status = ?, publishedAt = ?
+       WHERE id = ?`,
+      [
+        title.trim(),
+        uniqueSlug,
+        (excerpt || '').trim(),
+        content,
+        (category || 'General').trim(),
+        (author || 'V Dental and Implant Center').trim(),
+        featuredImageUrl,
+        (metaTitle || title).trim(),
+        (metaDescription || excerpt || '').trim(),
+        (metaKeywords || '').trim(),
+        (serviceLink || '').trim(),
+        Number(readTimeMinutes) || estimateReadTime(content),
+        postStatus,
+        publishedAt,
+        id,
+      ]
+    );
+
+    const row = await dbGet(`SELECT * FROM blog_posts WHERE id = ?`, [id]);
+    res.json({ success: true, post: mapBlogRow(row) });
+  } catch (error) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    console.error('Blog update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update blog post' });
+  }
+});
+
+app.delete('/api/admin/blog/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const item = await dbGet(`SELECT featuredImageUrl FROM blog_posts WHERE id = ?`, [id]);
+    if (!item) return res.status(404).json({ success: false, error: 'Post not found' });
+
+    await dbRun(`DELETE FROM blog_posts WHERE id = ?`, [id]);
+
+    if (item.featuredImageUrl) {
+      const imgPath = path.join(uploadsDir, path.basename(item.featuredImageUrl));
+      if (fs.existsSync(imgPath)) fs.unlink(imgPath, () => {});
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Blog delete error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete blog post' });
+  }
+});
+
+// ============================================
+// ADMIN: AI PREVIEW SUBMISSIONS
+// ============================================
+app.get('/api/admin/ai-previews', requireAdmin, async (req, res) => {
+  try {
+    const rows = await dbAll(`SELECT * FROM ai_previews ORDER BY createdAt DESC`);
+    const previews = rows.map((row) => {
+      let analysis = null;
+      if (row.analysisJson) {
+        try {
+          analysis = JSON.parse(row.analysisJson);
+        } catch {
+          analysis = null;
+        }
+      }
+      return { ...row, analysis };
+    });
+    res.json({ success: true, previews });
+  } catch (error) {
+    console.error('Admin ai-previews fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch AI previews' });
+  }
+});
+
+app.patch('/api/admin/ai-previews/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+  if (!status || !['new', 'contacted', 'archived'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid status' });
+  }
+  try {
+    await dbRun(`UPDATE ai_previews SET status = ? WHERE id = ?`, [status, id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('AI preview update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update submission' });
+  }
+});
+
+app.delete('/api/admin/ai-previews/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const row = await dbGet(`SELECT * FROM ai_previews WHERE id = ?`, [id]);
+    await dbRun(`DELETE FROM ai_previews WHERE id = ?`, [id]);
+    deleteAiPreviewFiles(row);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('AI preview delete error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete submission' });
   }
 });
 
@@ -1357,7 +2153,68 @@ app.use(express.static(distPath));
 
 // API health check
 app.get('/api/health', (req, res) => {
-  res.json({ message: 'SmileVista Dental API is running', version: '1.0.0' });
+  res.json({
+    message: 'SmileVista Dental API is running',
+    version: '1.0.0',
+    dbReady
+  });
+});
+
+app.get('/api/gemini-status', async (req, res) => {
+  const hasKey = Boolean(GEMINI_API_KEY);
+  let textOk = false;
+  let imageOk = false;
+  let imageReason = null;
+  let imageDetail = '';
+
+  if (hasKey) {
+    try {
+      const textUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+      const tr = await fetch(textUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] })
+      });
+      textOk = tr.ok;
+    } catch {
+      textOk = false;
+    }
+
+    try {
+      const imageUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+      const ir = await fetch(imageUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'tiny white dot on gray background' }] }],
+          generationConfig: { responseModalities: ['IMAGE'] }
+        })
+      });
+      const body = await ir.text();
+      imageOk = ir.ok && (body.includes('inlineData') || body.includes('inline_data'));
+      if (!ir.ok) {
+        const failure = parseGeminiFailure(ir.status, body);
+        imageReason = failure.reason;
+        imageDetail = (failure.detail || '').slice(0, 300);
+      } else if (!imageOk) {
+        imageReason = 'no_image_in_response';
+      }
+    } catch (e) {
+      imageReason = 'request_failed';
+      imageDetail = e?.message || '';
+    }
+  }
+
+  res.json({
+    hasApiKey: hasKey,
+    imagePreviewEnabled: GEMINI_IMAGE_PREVIEW,
+    imageModel: GEMINI_IMAGE_MODEL,
+    textAnalysisOk: textOk,
+    imageGenerationOk: imageOk,
+    imageReason,
+    imageDetail,
+    billingLikelyRequired: imageReason === 'billing_required'
+  });
 });
 
 // DB diagnostic endpoint - safe to remove after deployment is verified
@@ -1399,7 +2256,21 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log('✅ All APIs ready for V Dental and Implant Center');
-});
+async function startServer() {
+  try {
+    await initDb();
+    await seedBlogPostsIfEmpty();
+    dbReady = true;
+    console.log('✅ Database initialized');
+  } catch (err) {
+    console.error('❌ Failed to initialize database:', err);
+    process.exit(1);
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log('✅ All APIs ready for V Dental and Implant Center');
+  });
+}
+
+startServer();

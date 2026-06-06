@@ -14,6 +14,8 @@ async function build() {
     entryPoints: ['src/main.jsx'],
     bundle: true,
     outfile: 'dist/bundle.js',
+    // Root-relative asset URLs so images work on nested routes (e.g. /admin)
+    publicPath: '/',
     minify: !isDev,
     sourcemap: isDev,
     loader: {
@@ -28,6 +30,11 @@ async function build() {
       'process.env.NODE_ENV': isDev ? '"development"' : '"production"'
     }
   });
+
+  // Copy favicon to dist so it persists across builds
+  const faviconSrc = path.resolve('src/images/logo.png');
+  const faviconDst = path.resolve('dist/favicon.png');
+  if (fs.existsSync(faviconSrc)) fs.copyFileSync(faviconSrc, faviconDst);
 
   if (isDev) {
     await ctx.watch();

@@ -1,11 +1,11 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const ServicePage = ({ title, subtitle, heroImg, benefits, steps, beforeImg, afterImg, journeyTitle, outstationText }) => {
+const ServicePage = ({ title, subtitle, heroImg, benefits, steps, beforeImg, afterImg, journeyTitle, outstationText, doctors }) => {
   const { t } = useLanguage();
   return (
-    <div className="bg-[color:var(--bg)] min-h-screen pt-20 md:pt-24 lg:pt-28">
+    <div className="bg-[color:var(--bg)] min-h-screen pt-28 md:pt-36 lg:pt-40">
       {/* Hero Section */}
       <section className="relative h-[500px] flex items-center justify-center overflow-hidden">
         <img src={heroImg} alt={title} className="absolute inset-0 w-full h-full object-cover brightness-[0.65] contrast-105" />
@@ -100,6 +100,33 @@ const ServicePage = ({ title, subtitle, heroImg, benefits, steps, beforeImg, aft
         </section>
       )}
 
+      {/* Specialist Doctors */}
+      {doctors && doctors.length > 0 && (
+        <section className="py-16 px-4 bg-[color:var(--soft)]">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-8">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color:var(--teal)] mb-2">Our Specialists</p>
+              <h2 className="text-2xl md:text-3xl font-serif font-bold text-[color:var(--dk)]">Specialist Team</h2>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
+              {doctors.map((doc, i) => (
+                <div
+                  key={i}
+                  className={`bg-white rounded-2xl p-6 border shadow-sm flex flex-col gap-2 ${i === 0 ? 'border-[color:var(--teal)]/30' : 'border-black/5'}`}
+                >
+                  <span className={`inline-block self-start text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-1 ${i === 0 ? 'bg-[color:var(--teal)] text-white' : 'bg-[color:var(--soft)] text-[color:var(--teal)]'}`}>
+                    {doc.tag}
+                  </span>
+                  <h3 className="text-lg font-serif font-bold text-[color:var(--dk)]">{doc.name}</h3>
+                  <p className="text-[color:var(--teal)] font-semibold text-sm leading-snug">{doc.title}</p>
+                  <p className="text-xs text-[color:var(--muted)] mt-1">{doc.experience}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Results Section */}
       {afterImg && (
         <section className="py-24 px-4 max-w-6xl mx-auto">
@@ -159,3 +186,4 @@ const ServicePage = ({ title, subtitle, heroImg, benefits, steps, beforeImg, aft
 };
 
 export default ServicePage;
+

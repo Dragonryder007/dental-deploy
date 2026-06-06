@@ -1,4 +1,4 @@
-/** Kannada (kn) — same key structure as English `en` */
+﻿/** Kannada (kn) — same key structure as English `en` */
 export default {
   nav: {
     home: 'ಮುಖಪುಟ',
@@ -357,6 +357,9 @@ export default {
     servicePlaceholder: 'ಸೇವೆ *',
     datePlaceholder: 'ದಿನಾಂಕ *',
     timeSlot: 'ಸಮಯ ಸ್ಲಾಟ್ *',
+    loadingAvailability: 'ಈ ದಿನಾಂಕಕ್ಕಾಗಿ ಲಭ್ಯತೆಯನ್ನು ಪರೀಕ್ಷಿಸಲಾಗುತ್ತಿದೆ…',
+    slotUnavailable: 'ಈ ಸಮಯ ಈಗಾಗಲೇ ಬುಕ್ ಆಗಿದೆ',
+    slotPast: 'ಈ ಸಮಯ ಕಳೆದುಹೋಗಿದೆ',
     goalsLabel: 'ನಿಮ್ಮ ದಂತ ಗುರಿಗಳ ಬಗ್ಗೆ ಹೇಳಿ',
     goalsPlaceholder: 'ಉದಾ., ಹಲ್ಲುಗಳನ್ನು ನೇರಗೊಳಿಸಲು, ಮುಖಮುದ್ರೆ ಸುಧಾರಿಸಲು, ಕಾಣೆಯಾದ ಹಲ್ಲುಗಳನ್ನು ಬದಲಾಯಿಸಲು...',
     confirmBtn: 'ನೇಮಕಾತಿ ದೃಢೀಕರಿಸಿ',
@@ -466,3 +469,4 @@ export default {
     }
   }
 };
+

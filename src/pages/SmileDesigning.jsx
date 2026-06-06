@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ServicePage from '../components/ServicePage';
 import { useLanguage } from '../contexts/LanguageContext';
 import smileDesignBefore from '../images/smile design before.png';
@@ -46,3 +46,4 @@ const SmileDesigning = () => {
 };
 
 export default SmileDesigning;
+

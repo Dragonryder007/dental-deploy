@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import logo from '../images/logo.png';
@@ -9,11 +9,27 @@ const Footer = () => {
 
   const footerSections = [
     {
-      title: t('nav.services'),
+      title: 'Smile & Aesthetics',
       links: [
         { label: t('nav.smileDesigning'), href: '/smile-designing' },
+        { label: t('nav.invisalignBangalore'), href: '/invisalign-bangalore' },
+        { label: t('nav.veneersBangalore'), href: '/veneers-bangalore' },
+        { label: t('nav.smileMakeoverBangalore'), href: '/smile-makeover-bangalore' },
         { label: t('nav.alignersBraces'), href: '/aligners-braces' },
-        { label: t('nav.dentalImplants'), href: '/dental-implants' }
+        { label: 'Dental Implants', href: '/dental-implants-bangalore' },
+        { label: t('nav.fullMouthRehab'), href: '/full-mouth-rehabilitation-bangalore' },
+        { label: t('nav.allOn4Implants'), href: '/all-on-4-implants-bangalore' },
+        { label: t('nav.dentalTourism'), href: '/dental-tourism-india' },
+      ]
+    },
+    {
+      title: 'General & Family',
+      links: [
+        { label: 'General Dentistry', href: '/general-dentistry-bangalore' },
+        { label: 'Family Dentistry', href: '/family-dentistry-bangalore' },
+        { label: 'Pediatric Dentistry', href: '/pediatric-dentistry-bangalore' },
+        { label: 'Laser Dentistry', href: '/laser-dentistry-bangalore' },
+        { label: 'Invisalign for Kids', href: '/invisalign-for-kids-bangalore' },
       ]
     },
     {
@@ -30,6 +46,8 @@ const Footer = () => {
       links: [
         { label: t('nav.assessment'), href: '/assessment' },
         { label: t('nav.faq'), href: '/faq' },
+        { label: t('nav.blog'), href: '/blog' },
+        { label: t('nav.reviews'), href: '/reviews' },
         { label: t('nav.contact'), href: '/#contact' }
       ]
     }
@@ -51,15 +69,15 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-[color:var(--deep)] text-white pt-20">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-16">
+    <footer className="bg-[color:var(--deep)] text-white pt-12 sm:pt-16 md:pt-20">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 md:gap-12 pb-12 md:pb-16">
         {/* Branding & Contact */}
-        <div className="lg:col-span-2">
+        <div className="col-span-2 lg:col-span-2">
           <Link to="/" className="flex items-center no-underline group mb-4">
             <img
               src={logo}
               alt="V Dental and Implant Center Logo"
-              className="h-20 md:h-24 w-auto object-contain transition-transform group-hover:scale-105 bg-white rounded-xl p-2 shadow-md"
+              className="h-16 sm:h-20 md:h-24 w-auto object-contain transition-transform group-hover:scale-105 bg-white rounded-xl p-2 shadow-md"
             />
           </Link>
           <div className="mt-8 space-y-4">
@@ -149,8 +167,8 @@ const Footer = () => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-white/5 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/30">
+      <div className="border-t border-white/5 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs text-white/30 text-center sm:text-left">
           <span>{t('footer.allRights')}</span>
           <div className="flex gap-6">
             <a href="#" className="hover:text-white transition-colors">{t('footer.privacy')}</a>
@@ -164,3 +182,4 @@ const Footer = () => {
 };
 
 export default Footer;
+

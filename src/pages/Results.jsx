@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import SEO from '../components/SEO';
 
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:6000' : '';
 
 function resolveMediaUrl(url) {
   if (!url) return url;
@@ -163,3 +163,4 @@ const ResultsPage = () => {
 };
 
 export default ResultsPage;
+
